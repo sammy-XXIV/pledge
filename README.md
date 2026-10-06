@@ -34,4 +34,8 @@ An agent API says "done" but returns late, empty, or wrong. The buyer already pa
 
 Open `web/index.html?addr=<deployed address>` for the read-only dashboard.
 
+Deployed on Monad testnet (chain 10143): `0x43fbC879e4C60418D1e1dF27Ed15aC2EF1af20cc`
+
+Live demo: `PLEDGE=0x43fbC879e4C60418D1e1dF27Ed15aC2EF1af20cc npx hardhat run scripts/demo-testnet.js --network monadTestnet`
+
 Monad testnet ERC-8004 identity registry: `0x8004A818BFB912233c491871b3d84c89A494BD9e` (chain 10143).
