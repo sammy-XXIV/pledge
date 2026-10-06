@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pledge App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+<link rel="stylesheet" href="shared.css">
+<style>
+/* Two fonts only: Bebas Neue for titles and numbers, Inter for everything else. */
+h3,.logo,.pill,.eyebrow,.tag{font-family:Inter,system-ui,sans-serif}
+:root{--glass:rgba(43,89,255,.08);--hair:rgba(255,255,255,.07);--hover:rgba(43,89,255,.16)}
+body{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
+
+/* sidebar */
+aside.nav{position:sticky;top:0;height:100vh;padding:24px 16px;display:flex;flex-direction:column;gap:32px;background:rgba(0,0,0,.45);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.logo{font-weight:700;letter-spacing:.08em;font-size:18px}
+.menu{display:grid;gap:8px}
+.menu a{display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:12px;text-decoration:none;color:var(--muted);font-size:14px}
+.menu a:hover{color:#fff;background:var(--glass)}
+.menu a.on{color:#fff;background:rgba(43,89,255,.22)}
+.menu a .cnt{margin-left:auto;font-size:12px;color:var(--muted)}
+.net{margin-top:auto;display:grid;gap:8px;font-size:12px;color:var(--muted)}
+.net .src{display:flex;align-items:center;gap:8px;padding:0 4px}
+.net code{color:#fff}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--blue);flex:none}
+.dot.sample{background:transparent;box-shadow:inset 0 0 0 2px var(--muted)}
+.pill.ghost{justify-content:center;border:0;background:var(--glass);padding:8px 16px}
+.pill.ghost:hover{background:var(--hover)}
+
+/* main */
+main{padding:32px 40px 80px;min-width:0}
+.page{max-width:1040px}
+.top{margin-bottom:32px}
+h1{margin:0;font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:clamp(40px,4.4vw,56px);line-height:1;letter-spacing:.02em;text-transform:uppercase;display:flex;align-items:center;gap:16px}
+.tagchip{font:600 11px/1 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);background:var(--glass);border-radius:999px;padding:6px 12px}
+.top p{margin:8px 0 0;color:var(--muted);font-size:14px}
+h2{font:600 12px/1 Inter,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:40px 0 16px}
+
+/* surfaces: one panel, hairline dividers, no outlines */
+.panel{background:var(--glass);border-radius:16px;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);overflow:hidden}
+.stats{display:grid;grid-template-columns:repeat(5,1fr)}
+.stat{padding:16px 24px}
+.stat+.stat{border-left:1px solid var(--hair)}
+.stat b{display:block;font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:44px;line-height:1;font-variant-numeric:tabular-nums}
+.stat span{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+.r{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) 150px 200px;gap:16px;align-items:center;width:100%;padding:12px 24px;background:none;border:0;color:inherit;text-align:left;cursor:pointer;font-size:14px}
+.r+.r,.hd+.r{border-top:1px solid var(--hair)}
+.r:hover,.r:focus-visible{background:var(--hover)}
+.r.hd{cursor:default;padding-top:16px;padding-bottom:8px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.r.hd:hover{background:none}
+.r.hd+.r{border-top:0}
+.who{display:flex;align-items:center;gap:16px}
+.who .av{width:32px;height:32px;border-radius:8px}
+.two{display:flex;flex-direction:column;line-height:1.3}
+.two b{font-weight:500}
+.two small{font-size:12px;color:var(--muted)}
+.amt b{font-variant-numeric:tabular-nums}
+.due{justify-self:end;text-align:right;color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.sd{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:#fff}
+.sd i{width:8px;height:8px;border-radius:50%;flex:none}
+.sd.s-Paid i{background:var(--blue)}
+.sd.s-Active i{box-shadow:inset 0 0 0 2px var(--blue)}
+.sd.s-Committed i{box-shadow:inset 0 0 0 2px #fff}
+.sd.s-Slashed i{background:#fff}
+.sd.s-Open i,.sd.s-Cancelled i{background:var(--muted)}
+.flag{display:inline-block}
+.empty{padding:32px 24px;color:var(--muted);font-size:14px}
+
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.chip{border:0;border-radius:999px;background:var(--glass);padding:8px 16px;font-size:13px;cursor:pointer;color:var(--muted)}
+.chip:hover{color:#fff;background:var(--hover)}
+.chip.on{background:var(--blue);color:#fff}
+.clear{color:var(--blue)}
+
+/* agents */
+.ag{grid-template-columns:minmax(0,1.5fr) 100px 100px minmax(0,1fr)}
+.ag .n{font-family:"Bebas Neue",Impact,sans-serif;font-size:28px;line-height:1}
+.bar{height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;display:flex}
+.bar i{display:block;height:100%}
+.bar .ok{background:var(--blue)}.bar .no{background:#fff}
+
+/* drawer */
+#veil{position:fixed;inset:0;background:rgba(0,0,0,.7);opacity:0;pointer-events:none;z-index:20}
+#veil.on{opacity:1;pointer-events:auto}
+#drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:rgba(5,7,13,.85);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);transform:translateX(100%);z-index:21;overflow-y:auto;padding:32px 24px}
+#drawer.on{transform:none}
+.dhead{display:flex;align-items:center;gap:16px;margin-bottom:24px}
+.dhead h3{margin:0;font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:36px;letter-spacing:.02em;text-transform:uppercase;margin-right:auto;line-height:1}
+.x{border:0;border-radius:10px;background:var(--glass);width:36px;height:36px;display:grid;place-items:center;cursor:pointer}
+.x:hover{background:var(--hover)}
+.kv{background:var(--glass);border-radius:14px;margin-bottom:16px;overflow:hidden}
+.kv div{display:flex;justify-content:space-between;gap:16px;padding:12px 16px;font-size:13px}
+.kv div+div{border-top:1px solid var(--hair)}
+.kv span{color:var(--muted)}
+.kv code{word-break:break-all;text-align:right}
+.next{border-radius:14px;padding:16px;background:rgba(43,89,255,.18);font-size:14px}
+.next b{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#fff;margin-bottom:8px;font-weight:600}
+.next code{display:block;margin-top:8px;padding:8px 12px;border-radius:8px;background:#000;color:#fff}
+.chip:focus-visible,.r:focus-visible,.menu a:focus-visible,.x:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+
+@media (max-width:900px){
+  body{grid-template-columns:1fr}
+  aside.nav{position:static;height:auto;flex-direction:row;align-items:center;gap:16px;padding:16px}
+  .menu{display:flex;flex:1;overflow-x:auto}.menu a .cnt{display:none}.net{display:none}
+  main{padding:24px 16px 64px}
+  .stats{grid-template-columns:repeat(2,1fr)}.stat:nth-child(odd){border-left:0}.stat:nth-child(n+3){border-top:1px solid var(--hair)}
+  .r{grid-template-columns:1fr auto;grid-template-areas:"w s" "a d";row-gap:8px}
+  .r>:nth-child(1){grid-area:w}.r>:nth-child(2){grid-area:a}.r>:nth-child(3){grid-area:s;justify-self:end}.r>:nth-child(4){grid-area:d}
+  .r.hd{display:none}
+  .ag{grid-template-columns:1fr 1fr;grid-template-areas:"w w" "a b" "c c"}
+}
+</style>
+</head>
+<body>
+<aside class="nav">
+  <a class="logo" id="home" href="index.html">PLEDGE</a>
+  <nav class="menu" id="menu"></nav>
+  <div class="net" id="net"></div>
+</aside>
+<main><div class="page" id="view"></div></main>
+<div id="veil"></div>
+<aside id="drawer" aria-label="Job details"></aside>
+
+<script src="shared.js"></script>
+<script>
+const { $, load, avatar, svg, countdown, seedSpans, link, short, CFG, esc } = P;
+$("home").href = link("index.html");
+const S = { data: { jobs: [], agents: [], source: "sample" }, view: "overview", filter: "all", agent: null, open: null };
+const TABS = [["overview", "Overview", "grid"], ["jobs", "Jobs", "list"], ["agents", "Agents", "users"]];
+const now = () => Math.floor(Date.now() / 1000);
+const isLate = (j) => j.state === "Active" && j.deadline < now();
+const canClaim = (j) => j.state === "Committed" && now() > j.deadline + P.JUDGE_WINDOW;
+const needsAttn = (j) => isLate(j) || canClaim(j);
+const sample = () => S.data.source === "sample";
+
+function menu() {
+  const counts = { overview: "", jobs: S.data.jobs.length, agents: S.data.agents.length };
+  $("menu").innerHTML = TABS.map(([id, l, ic]) => `<a href="#${id}" class="${S.view === id ? "on" : ""}">${svg(ic)}${l}<span class="cnt">${counts[id]}</span></a>`).join("");
+  $("net").innerHTML = `<div class="src"><span class="dot ${sample() ? "sample" : ""}"></span>${sample() ? "Sample data" : "Live · Monad testnet"}</div>` +
+    (CFG.ADDRESS ? `<div class="src"><code>${short(CFG.ADDRESS)}</code></div>` : "") +
+    `<a class="pill ghost" href="${link("index.html")}">Back to site</a>`;
+}
+
+const state = (s) => `<span class="sd s-${esc(s)}"><i></i>${esc(s)}</span>`;
+function jobRow(j) {
+  return `<button class="r" data-job="${j.id}" data-open="${j.id}">
+    <span class="who">${avatar(j.agentId)}<span class="two"><b>Job #${j.id}</b><small>Agent #${j.agentId}</small></span></span>
+    <span class="two amt"><b>${esc(j.payment)} MON</b><small>${esc(j.bond)} bond</small></span>
+    ${state(j.state)}<span class="due"></span></button>`;
+}
+const jobHead = '<div class="r hd"><span>Job</span><span>Amount</span><span>State</span><span style="justify-self:end">Deadline</span></div>';
+const list = (rows, empty) => `<div class="panel">${rows.length ? jobHead + rows.map(jobRow).join("") : `<div class="empty">${empty}</div>`}</div>`;
+
+function overview() {
+  const J = S.data.jobs;
+  const done = J.filter((j) => j.state === "Paid").length, bad = J.filter((j) => j.state === "Slashed").length;
+  const open = J.filter((j) => ["Active", "Committed"].includes(j.state));
+  const locked = open.reduce((n, j) => n + Number(j.payment) + Number(j.bond), 0);
+  const tiles = [[J.length, "Jobs"], [open.length, "In flight"], [done, "Delivered"], [bad, "Slashed"], [locked.toFixed(2), "MON locked"]];
+  return `<div class="top"><h1>Overview${sample() ? '<span class="tagchip">Sample</span>' : ""}</h1><p>Every bond, every deadline, one place.</p></div>
+    <div class="panel"><div class="stats">${tiles.map(([n, l]) => `<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("")}</div></div>
+    <h2>Needs attention</h2>${list(J.filter(needsAttn), "Nothing late. Every open job is inside its window.")}
+    <h2>Recent jobs</h2>${list(J.slice(-5).reverse(), "No jobs yet.")}`;
+}
+
+const FILTERS = [["all", "All"], ["active", "Active"], ["late", "Late"], ["committed", "Committed"], ["settled", "Settled"]];
+const match = (j) => ({ all: true, active: j.state === "Active", late: isLate(j), committed: j.state === "Committed", settled: ["Paid", "Slashed", "Cancelled"].includes(j.state) }[S.filter]);
+function jobs() {
+  const rows = S.data.jobs.filter((j) => match(j) && (S.agent == null || j.agentId === S.agent)).reverse();
+  return `<div class="top"><h1>Jobs</h1><p>${S.agent != null ? `Agent #${S.agent} only. <a href="#jobs" class="clear" data-clear="1">Show all</a>` : "Select a job for details."}</p></div>
+    <div class="chips">${FILTERS.map(([id, l]) => `<button class="chip ${S.filter === id ? "on" : ""}" data-filter="${id}">${l}</button>`).join("")}</div>
+    ${list(rows, "No jobs match this filter.")}`;
+}
+
+function agents() {
+  const rows = S.data.agents.slice().sort((a, b) => b.completed - a.completed || a.slashed - b.slashed);
+  const head = '<div class="r hd ag"><span>Agent</span><span>Delivered</span><span>Slashed</span><span>Record</span></div>';
+  const row = (a) => {
+    const tot = a.completed + a.slashed, pct = tot ? (a.completed / tot) * 100 : 0;
+    return `<button class="r ag" data-agent="${a.id}"><span class="who">${avatar(a.id)}<span class="two"><b>Agent #${a.id}</b><small>ERC-8004 identity</small></span></span>
+      <span class="n">${a.completed}</span><span class="n">${a.slashed}</span>
+      <span class="bar">${tot ? `<i class="ok" style="width:${pct}%"></i><i class="no" style="width:${100 - pct}%"></i>` : ""}</span></button>`;
+  };
+  return `<div class="top"><h1>Agents</h1><p>Track record straight from the contract.</p></div>
+    <div class="panel">${rows.length ? head + rows.map(row).join("") : '<div class="empty">No agents yet.</div>'}</div>`;
+}
+
+function drawer(j) {
+  if (!j) { $("drawer").classList.remove("on"); $("veil").classList.remove("on"); return; }
+  const c = countdown(j, now());
+  let next = "Nothing left to do. This job is settled.";
+  if (j.state === "Open") next = `Waiting for the agent owner to call <code>accept(${j.id})</code> with a bond.`;
+  else if (isLate(j)) next = `Deadline passed with no commit. Anyone can call<code>slash(${j.id})</code>`;
+  else if (j.state === "Active") next = `Agent must call <code>commit(${j.id}, resultHash)</code> before the deadline.`;
+  else if (canClaim(j)) next = `Judge window is over. The agent can call<code>claim(${j.id})</code>`;
+  else if (j.state === "Committed") next = `Judge can call <code>confirm(${j.id})</code> to pay or <code>reject(${j.id})</code> to slash.`;
+  $("drawer").innerHTML = `<div class="dhead"><h3>Job #${j.id}</h3>${state(j.state)}<button class="x" id="close" aria-label="Close">${svg("x")}</button></div>
+    <div class="who" style="margin-bottom:24px">${avatar(j.agentId)}<span class="two"><b>Agent #${j.agentId}</b><small>${short(j.agent)}</small></span></div>
+    <div class="kv"><div><span>Payment</span><b class="num">${esc(j.payment)} MON</b></div><div><span>Bond</span><b class="num">${esc(j.bond)} MON</b></div>
+    <div><span>Deadline</span><b>${new Date(j.deadline * 1000).toLocaleString()}</b></div><div><span>Status</span><b>${esc(c.t)}</b></div></div>
+    <div class="kv"><div><span>Buyer</span><code>${short(j.buyer)}</code></div><div><span>Judge</span><code>${short(j.judge)}</code></div>
+    <div><span>Result hash</span><code>${j.resultHash ? short(j.resultHash) : "not committed"}</code></div></div>
+    <div class="next"><b>What happens next</b>${next}</div>`;
+  $("drawer").classList.add("on"); $("veil").classList.add("on");
+  $("close").focus();
+}
+
+function render() {
+  if (!["overview", "jobs", "agents"].includes(S.view)) S.view = "overview";
+  menu(); seedSpans(S.data.jobs);
+  $("view").innerHTML = { overview, jobs, agents }[S.view]();
+  tick();
+  drawer(S.data.jobs.find((j) => j.id === S.open));
+}
+function tick() {
+  const n = now();
+  document.querySelectorAll("[data-job]").forEach((el) => {
+    const j = S.data.jobs[Number(el.dataset.job)]; if (!j) return;
+    const c = countdown(j, n);
+    el.querySelector(".due").innerHTML = c.late ? `<span class="flag">LATE · ${c.t.replace(" late", "")}</span>` : (c.f || esc(c.t));
+  });
+}
+
+addEventListener("hashchange", () => { S.view = location.hash.slice(1) || "overview"; if (S.view !== "jobs") S.agent = null; S.open = null; render(); });
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-open],[data-filter],[data-agent],[data-clear],#veil,#close");
+  if (!t) return;
+  if (t.dataset.open != null) { S.open = Number(t.dataset.open); drawer(S.data.jobs[S.open]); }
+  else if (t.dataset.filter) { S.filter = t.dataset.filter; render(); }
+  else if (t.dataset.agent) { S.agent = Number(t.dataset.agent); S.filter = "all"; location.hash = "#jobs"; }
+  else if (t.dataset.clear) { S.agent = null; render(); }
+  else { S.open = null; drawer(null); }
+});
+addEventListener("keydown", (e) => { if (e.key === "Escape" && S.open != null) { S.open = null; drawer(null); } });
+
+S.view = location.hash.slice(1) || "overview";
+load().then((d) => {
+  S.data = d; render(); setInterval(tick, 1000);
+  if (CFG.ADDRESS) setInterval(() => load().then((x) => { S.data = x; render(); }).catch(() => {}), 20000);
+}).catch((e) => { $("view").innerHTML = `<div class="panel"><div class="empty">Failed to load: ${esc(e.message)}</div></div>`; });
+</script>
+</body>
+</html>
