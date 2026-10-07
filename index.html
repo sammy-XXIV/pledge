@@ -195,7 +195,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-bet
 <section class="s" id="live"><div class="wrap">
   <div class="live-head">
     <div>
-      <div class="tag">Live on Monad testnet</div>
+      <div class="tag">Live on Monad</div>
       <h2 data-fx="blur">See it <em>settle.</em></h2>
       <p class="note" id="note"></p>
     </div>
@@ -254,22 +254,22 @@ function tick() {
   for (const j of data.jobs) {
     const el = $("job" + j.id); if (!el) continue;
     const c = countdown(j, now);
-    el.querySelector(".t").textContent = c.t;
-    el.querySelector(".rg").innerHTML = j.state === "Active" ? ring(c.frac, c.late) : "";
-    el.querySelector(".fl").innerHTML = c.f;
+    el.querySelector(".t").textContent = c.late ? "" : c.t;
+    el.querySelector(".rg").innerHTML = j.state === "Active" && !c.late ? ring(c.frac, c.late) : "";
+    el.querySelector(".fl").innerHTML = c.late ? `<span class="flag">LATE · ${c.t.replace(" late", "")}</span>` : c.f;
     el.classList.toggle("is-late", c.late);
   }
 }
 load().then((d) => {
   data = d;
-  $("note").textContent = d.source === "sample" ? "Sample data. Add ?addr=0x… to the URL to read a live contract." : "Read from the contract on Monad testnet.";
+  $("note").textContent = d.source === "sample" ? "Sample data. Add ?addr=0x… to the URL to read a live contract." : "Read from the contract on Monad.";
   const done = d.jobs.filter((j) => j.state === "Paid").length, bad = d.jobs.filter((j) => j.state === "Slashed").length;
   const locked = d.jobs.filter((j) => ["Active", "Committed"].includes(j.state)).reduce((n, j) => n + Number(j.payment) + Number(j.bond), 0);
   $("stats").innerHTML = [[d.jobs.length, 0, "Jobs"], [done, 0, "Delivered"], [bad, 0, "Slashed"], [locked, 2, "MON in escrow"]]
     .map(([n, dec, l]) => `<div class="stat"><b data-count="${n}" data-pad="2" data-dec="${dec}">0</b><span>${l}</span></div>`).join("");
   seedSpans(d.jobs);
   $("recent").innerHTML = d.jobs.length ? jobHead + d.jobs.slice(-4).reverse().map(jobRow).join("") : '<div class="jr k">No jobs yet.</div>';
-  $("foot").innerHTML = CFG.ADDRESS ? `Contract <code>${short(CFG.ADDRESS)}</code>` : "ERC-8004 identity · Monad testnet";
+  $("foot").innerHTML = CFG.ADDRESS ? `Contract <code>${short(CFG.ADDRESS)}</code>` : "ERC-8004 identity · Monad";
   reveal(); tick(); setInterval(tick, 1000);
 }).catch((e) => { $("note").textContent = "Failed to load: " + e.message; });
 reveal();

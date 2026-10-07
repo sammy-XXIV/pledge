@@ -100,7 +100,24 @@ h2{font:600 12px/1 Inter,sans-serif;letter-spacing:.16em;text-transform:uppercas
 .next{border-radius:14px;padding:16px;background:rgba(43,89,255,.18);font-size:14px}
 .next b{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#fff;margin-bottom:8px;font-weight:600}
 .next code{display:block;margin-top:8px;padding:8px 12px;border-radius:8px;background:#000;color:#fff}
-.chip:focus-visible,.r:focus-visible,.menu a:focus-visible,.x:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.chip:focus-visible,.r:focus-visible,.menu a:focus-visible,.x:focus-visible,.btn:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:12px;background:var(--blue);color:#fff;padding:10px 16px;font:600 14px Inter,sans-serif;cursor:pointer}
+.btn:hover{background:#fff;color:#000}
+.btn.ghost{background:var(--glass);color:#fff}.btn.ghost:hover{background:var(--hover)}
+.btn:disabled{opacity:.5;cursor:wait}
+.act{display:grid;gap:12px;margin:0 0 16px;background:var(--glass);border-radius:14px;padding:16px}
+.act .h{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:600}
+.field{display:grid;gap:6px;font-size:12px;color:var(--muted)}
+.field input{background:#000;border:1px solid var(--hair);border-radius:10px;padding:10px 12px;color:#fff;font:500 14px Inter,sans-serif;width:100%;box-sizing:border-box}
+.field input:focus{outline:2px solid var(--blue);border-color:transparent}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.net .btn{width:100%}
+#toast{position:fixed;left:256px;bottom:24px;z-index:40;display:grid;gap:8px;width:min(400px,calc(100% - 280px));pointer-events:none}
+@media (max-width:900px){#toast{left:16px;width:calc(100% - 32px)}}
+.toast{background:rgba(5,7,13,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-radius:12px;padding:12px 16px;font-size:13px;box-shadow:inset 3px 0 0 var(--blue)}
+.toast.err{box-shadow:inset 3px 0 0 #fff}
+.toast code{color:var(--blue)}
 
 @media (max-width:900px){
   body{grid-template-columns:1fr}
@@ -124,6 +141,7 @@ h2{font:600 12px/1 Inter,sans-serif;letter-spacing:.16em;text-transform:uppercas
 <main><div class="page" id="view"></div></main>
 <div id="veil"></div>
 <aside id="drawer" aria-label="Job details"></aside>
+<div id="toast" role="status" aria-live="polite"></div>
 
 <script src="shared.js"></script>
 <script>
@@ -137,10 +155,95 @@ const canClaim = (j) => j.state === "Committed" && now() > j.deadline + P.JUDGE_
 const needsAttn = (j) => isLate(j) || canClaim(j);
 const sample = () => S.data.source === "sample";
 
+// ---- wallet + contract writes (any injected EIP-1193 wallet, e.g. MetaMask)
+const WRITE_ABI = [
+  "function create(uint256 agentId, address judge, uint64 deadline) payable returns (uint256)",
+  "function accept(uint256 jobId) payable", "function commit(uint256 jobId, bytes32 resultHash)",
+  "function confirm(uint256 jobId)", "function reject(uint256 jobId)", "function slash(uint256 jobId)",
+  "function claim(uint256 jobId)", "function cancel(uint256 jobId)", "function withdraw()",
+  "function credits(address) view returns (uint256)", "function identity() view returns (address)",
+];
+const MONAD = { chainId: "0x279f", chainName: "Monad Testnet", nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 }, rpcUrls: [CFG.RPC] };
+const RP = P.provider; // shared, rate-limit aware
+const W = { addr: null, signer: null, credit: 0n, owners: {}, idAddr: null };
+const me = (a) => !!(W.addr && a && a.toLowerCase() === W.addr);
+
+function toast(msg, err) {
+  const el = document.createElement("div"); el.className = "toast" + (err ? " err" : ""); el.innerHTML = msg;
+  const box = $("toast"); box.appendChild(el); while (box.children.length > 3) box.firstChild.remove();
+  setTimeout(() => el.remove(), 7000);
+}
+async function connect() {
+  if (!CFG.ADDRESS) return toast("Open the app with ?addr=0x… to use a live contract.", true);
+  if (!window.ethereum) return toast("No wallet found. Install MetaMask or another browser wallet.", true);
+  try {
+    await window.ethereum.request({ method: "eth_requestAccounts" });
+    if (parseInt(await window.ethereum.request({ method: "eth_chainId" }), 16) !== 10143) {
+      try { await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: MONAD.chainId }] }); }
+      catch (e) { if (e.code !== 4902) throw e; await window.ethereum.request({ method: "wallet_addEthereumChain", params: [MONAD] }); }
+    }
+    W.signer = await new ethers.BrowserProvider(window.ethereum).getSigner();
+    W.addr = (await W.signer.getAddress()).toLowerCase();
+    toast(`Wallet connected <code>${short(ethers.getAddress(W.addr))}</code>`);
+    await refresh();
+  } catch (e) { toast("Connect failed: " + esc(e.shortMessage || e.message), true); }
+}
+async function refresh() {
+  S.data = await load();
+  if (W.addr) {
+    const c = new ethers.Contract(CFG.ADDRESS, WRITE_ABI, RP);
+    W.credit = await c.credits(W.addr);
+    W.idAddr = W.idAddr || (await c.identity());
+    const reg = new ethers.Contract(W.idAddr, ["function ownerOf(uint256) view returns (address)"], RP);
+    for (const j of S.data.jobs) if (j.state === "Open" && !(j.agentId in W.owners)) W.owners[j.agentId] = (await reg.ownerOf(j.agentId)).toLowerCase();
+  }
+  render();
+}
+async function send(label, fn, btn) {
+  if (!W.signer) return connect();
+  const c = new ethers.Contract(CFG.ADDRESS, WRITE_ABI, W.signer);
+  if (btn) btn.disabled = true;
+  try {
+    toast(`${label}: confirm in your wallet`);
+    const tx = await fn(c);
+    toast(`${label}: sent <code>${short(tx.hash)}</code>`);
+    const r = await tx.wait();
+    toast(`${label}: confirmed in block ${r.blockNumber}`);
+    await refresh().catch(() => setTimeout(() => refresh().catch(() => {}), 1500)); // a read hiccup is not a failed transaction
+    return r;
+  } catch (e) { toast(`${label} failed: ${esc(e.shortMessage || e.reason || e.message)}`, true); if (btn) btn.disabled = false; }
+}
+function actions(j) {
+  if (!CFG.ADDRESS) return "";
+  if (!W.addr) return '<div class="act"><span class="h">Take action</span><button class="btn" data-act="connect">Connect wallet</button></div>';
+  const out = [];
+  if (j.state === "Open") {
+    if (W.owners[j.agentId] === W.addr) out.push(`<label class="field">Bond (MON)<input id="f-bond" value="${Number(j.payment) / 2}"></label><button class="btn" data-act="accept">Accept with bond</button>`);
+    if (me(j.buyer)) out.push('<button class="btn ghost" data-act="cancel">Cancel job</button>');
+  } else if (isLate(j)) out.push('<button class="btn" data-act="slash">Slash bond to buyer</button>');
+  else if (j.state === "Active" && me(j.agent)) out.push('<label class="field">Result<input id="f-result" value="report-v1.pdf"></label><button class="btn" data-act="commit">Commit result</button>');
+  if (j.state === "Committed" && me(j.judge)) out.push('<div class="row2"><button class="btn" data-act="confirm">Confirm, pay agent</button><button class="btn ghost" data-act="reject">Reject, slash</button></div>');
+  if (canClaim(j) && me(j.agent)) out.push('<button class="btn ghost" data-act="claim">Claim payment and bond</button>');
+  return out.length ? `<div class="act"><span class="h">Take action</span>${out.join("")}</div>` : "";
+}
+function newJobForm() {
+  $("drawer").innerHTML = `<div class="dhead"><h3>New job</h3><button class="x" id="close" aria-label="Close">${svg("x")}</button></div>
+    <p class="k" style="margin:0 0 8px;font-size:14px">Escrow a payment for an agent. If it misses the deadline, its bond comes to you.</p>
+    <div class="act">
+      <label class="field">Agent ID (ERC-8004)<input id="f-agent" inputmode="numeric" value="${S.data.agents[0]?.id ?? ""}"></label>
+      <div class="row2"><label class="field">Payment (MON)<input id="f-pay" value="0.01"></label><label class="field">Deadline (minutes)<input id="f-min" value="5"></label></div>
+      <label class="field">Judge<input id="f-judge" value="${W.addr || ""}" placeholder="0x…"></label>
+      <button class="btn" data-act="create">Escrow payment</button>
+    </div>`;
+}
+
 function menu() {
   const counts = { overview: "", jobs: S.data.jobs.length, agents: S.data.agents.length };
   $("menu").innerHTML = TABS.map(([id, l, ic]) => `<a href="#${id}" class="${S.view === id ? "on" : ""}">${svg(ic)}${l}<span class="cnt">${counts[id]}</span></a>`).join("");
-  $("net").innerHTML = `<div class="src"><span class="dot ${sample() ? "sample" : ""}"></span>${sample() ? "Sample data" : "Live · Monad testnet"}</div>` +
+  const wal = !CFG.ADDRESS ? "" : W.addr
+    ? `<div class="src"><span class="dot"></span><code>${short(ethers.getAddress(W.addr))}</code></div>` + (W.credit > 0n ? `<button class="btn" data-act="withdraw">Withdraw ${ethers.formatEther(W.credit)} MON</button>` : "")
+    : '<button class="btn" data-act="connect">Connect wallet</button>';
+  $("net").innerHTML = wal + `<div class="src"><span class="dot ${sample() ? "sample" : ""}"></span>${sample() ? "Sample data" : "Live · Monad"}</div>` +
     (CFG.ADDRESS ? `<div class="src"><code>${short(CFG.ADDRESS)}</code></div>` : "") +
     `<a class="pill ghost" href="${link("index.html")}">Back to site</a>`;
 }
@@ -149,7 +252,7 @@ const state = (s) => `<span class="sd s-${esc(s)}"><i></i>${esc(s)}</span>`;
 function jobRow(j) {
   return `<button class="r" data-job="${j.id}" data-open="${j.id}">
     <span class="who">${avatar(j.agentId)}<span class="two"><b>Job #${j.id}</b><small>Agent #${j.agentId}</small></span></span>
-    <span class="two amt"><b>${esc(j.payment)} MON</b><small>${esc(j.bond)} bond</small></span>
+    <span class="two amt"><b>${esc(j.payment)} MON</b><small>${j.state === "Open" ? "no bond yet" : esc(j.bond) + " bond"}</small></span>
     ${state(j.state)}<span class="due"></span></button>`;
 }
 const jobHead = '<div class="r hd"><span>Job</span><span>Amount</span><span>State</span><span style="justify-self:end">Deadline</span></div>';
@@ -161,7 +264,7 @@ function overview() {
   const open = J.filter((j) => ["Active", "Committed"].includes(j.state));
   const locked = open.reduce((n, j) => n + Number(j.payment) + Number(j.bond), 0);
   const tiles = [[J.length, "Jobs"], [open.length, "In flight"], [done, "Delivered"], [bad, "Slashed"], [locked.toFixed(2), "MON locked"]];
-  return `<div class="top"><h1>Overview${sample() ? '<span class="tagchip">Sample</span>' : ""}</h1><p>Every bond, every deadline, one place.</p></div>
+  return `<div class="top"><div><h1>Overview${sample() ? '<span class="tagchip">Sample</span>' : ""}</h1><p>Every bond, every deadline, one place.</p></div>${CFG.ADDRESS ? '<button class="btn" data-act="newjob">New job</button>' : ""}</div>
     <div class="panel"><div class="stats">${tiles.map(([n, l]) => `<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("")}</div></div>
     <h2>Needs attention</h2>${list(J.filter(needsAttn), "Nothing late. Every open job is inside its window.")}
     <h2>Recent jobs</h2>${list(J.slice(-5).reverse(), "No jobs yet.")}`;
@@ -171,7 +274,7 @@ const FILTERS = [["all", "All"], ["active", "Active"], ["late", "Late"], ["commi
 const match = (j) => ({ all: true, active: j.state === "Active", late: isLate(j), committed: j.state === "Committed", settled: ["Paid", "Slashed", "Cancelled"].includes(j.state) }[S.filter]);
 function jobs() {
   const rows = S.data.jobs.filter((j) => match(j) && (S.agent == null || j.agentId === S.agent)).reverse();
-  return `<div class="top"><h1>Jobs</h1><p>${S.agent != null ? `Agent #${S.agent} only. <a href="#jobs" class="clear" data-clear="1">Show all</a>` : "Select a job for details."}</p></div>
+  return `<div class="top"><div><h1>Jobs</h1><p>${S.agent != null ? `Agent #${S.agent} only. <a href="#jobs" class="clear" data-clear="1">Show all</a>` : "Select a job for details."}</p></div>${CFG.ADDRESS ? '<button class="btn" data-act="newjob">New job</button>' : ""}</div>
     <div class="chips">${FILTERS.map(([id, l]) => `<button class="chip ${S.filter === id ? "on" : ""}" data-filter="${id}">${l}</button>`).join("")}</div>
     ${list(rows, "No jobs match this filter.")}`;
 }
@@ -185,12 +288,15 @@ function agents() {
       <span class="n">${a.completed}</span><span class="n">${a.slashed}</span>
       <span class="bar">${tot ? `<i class="ok" style="width:${pct}%"></i><i class="no" style="width:${100 - pct}%"></i>` : ""}</span></button>`;
   };
-  return `<div class="top"><h1>Agents</h1><p>Track record straight from the contract.</p></div>
+  return `<div class="top"><div><h1>Agents</h1><p>Track record straight from the contract.</p></div></div>
     <div class="panel">${rows.length ? head + rows.map(row).join("") : '<div class="empty">No agents yet.</div>'}</div>`;
 }
 
+const sigOf = (j) => (j === "new" ? "new" : j ? `${j.id}:${j.state}:${W.addr}:${isLate(j)}:${canClaim(j)}:${W.owners[j.agentId]}` : "");
 function drawer(j) {
+  S.sig = sigOf(j);
   if (!j) { $("drawer").classList.remove("on"); $("veil").classList.remove("on"); return; }
+  if (j === "new") { newJobForm(); $("drawer").classList.add("on"); $("veil").classList.add("on"); return; }
   const c = countdown(j, now());
   let next = "Nothing left to do. This job is settled.";
   if (j.state === "Open") next = `Waiting for the agent owner to call <code>accept(${j.id})</code> with a bond.`;
@@ -199,14 +305,14 @@ function drawer(j) {
   else if (canClaim(j)) next = `Judge window is over. The agent can call<code>claim(${j.id})</code>`;
   else if (j.state === "Committed") next = `Judge can call <code>confirm(${j.id})</code> to pay or <code>reject(${j.id})</code> to slash.`;
   $("drawer").innerHTML = `<div class="dhead"><h3>Job #${j.id}</h3>${state(j.state)}<button class="x" id="close" aria-label="Close">${svg("x")}</button></div>
-    <div class="who" style="margin-bottom:24px">${avatar(j.agentId)}<span class="two"><b>Agent #${j.agentId}</b><small>${short(j.agent)}</small></span></div>
-    <div class="kv"><div><span>Payment</span><b class="num">${esc(j.payment)} MON</b></div><div><span>Bond</span><b class="num">${esc(j.bond)} MON</b></div>
+    <div class="who" style="margin-bottom:16px">${avatar(j.agentId)}<span class="two"><b>Agent #${j.agentId}</b><small>${j.state === "Open" ? "Not accepted yet" : short(j.agent)}</small></span></div>${actions(j)}
+    <div class="kv"><div><span>Payment</span><b class="num">${esc(j.payment)} MON</b></div><div><span>Bond</span><b class="num">${j.state === "Open" ? "No bond yet" : esc(j.bond) + " MON"}</b></div>
     <div><span>Deadline</span><b>${new Date(j.deadline * 1000).toLocaleString()}</b></div><div><span>Status</span><b>${esc(c.t)}</b></div></div>
     <div class="kv"><div><span>Buyer</span><code>${short(j.buyer)}</code></div><div><span>Judge</span><code>${short(j.judge)}</code></div>
     <div><span>Result hash</span><code>${j.resultHash ? short(j.resultHash) : "not committed"}</code></div></div>
     <div class="next"><b>What happens next</b>${next}</div>`;
   $("drawer").classList.add("on"); $("veil").classList.add("on");
-  $("close").focus();
+  if (!$("drawer").contains(document.activeElement)) $("close").focus();
 }
 
 function render() {
@@ -214,7 +320,8 @@ function render() {
   menu(); seedSpans(S.data.jobs);
   $("view").innerHTML = { overview, jobs, agents }[S.view]();
   tick();
-  drawer(S.data.jobs.find((j) => j.id === S.open));
+  const o = S.open === "new" ? "new" : S.data.jobs.find((j) => j.id === S.open);
+  if (sigOf(o) !== S.sig) drawer(o); // keep typed input: only redraw the drawer when its job changed
 }
 function tick() {
   const n = now();
@@ -227,20 +334,40 @@ function tick() {
 
 addEventListener("hashchange", () => { S.view = location.hash.slice(1) || "overview"; if (S.view !== "jobs") S.agent = null; S.open = null; render(); });
 document.addEventListener("click", (e) => {
-  const t = e.target.closest("[data-open],[data-filter],[data-agent],[data-clear],#veil,#close");
+  const t = e.target.closest("[data-act],[data-open],[data-filter],[data-agent],[data-clear],#veil,#close");
   if (!t) return;
+  if (t.dataset.act) return act(t.dataset.act, t);
   if (t.dataset.open != null) { S.open = Number(t.dataset.open); drawer(S.data.jobs[S.open]); }
   else if (t.dataset.filter) { S.filter = t.dataset.filter; render(); }
   else if (t.dataset.agent) { S.agent = Number(t.dataset.agent); S.filter = "all"; location.hash = "#jobs"; }
   else if (t.dataset.clear) { S.agent = null; render(); }
   else { S.open = null; drawer(null); }
 });
+async function act(a, btn) {
+  const j = S.data.jobs.find((x) => x.id === S.open), v = (id) => ($(id)?.value || "").trim();
+  try {
+    if (a === "connect") return connect();
+    if (a === "withdraw") return send("Withdraw", (c) => c.withdraw(), btn);
+    if (a === "newjob") { if (!W.signer) await connect(); if (!W.signer) return; S.open = "new"; return drawer("new"); }
+    if (a === "create") {
+      const agentId = BigInt(v("f-agent")), value = ethers.parseEther(v("f-pay")), mins = Number(v("f-min")), judge = v("f-judge");
+      if (!(mins > 0) || value <= 0n || !ethers.isAddress(judge)) return toast("Check the agent ID, payment, deadline and judge address.", true);
+      const r = await send("Create job", (c) => c.create(agentId, judge, now() + Math.round(mins * 60), { value }), btn);
+      if (r) { S.open = S.data.jobs.length - 1; S.view = "jobs"; history.replaceState(null, "", location.search + "#jobs"); render(); drawer(S.data.jobs[S.open]); }
+      return;
+    }
+    if (!j) return;
+    if (a === "accept") return send(`Accept job #${j.id}`, (c) => c.accept(j.id, { value: ethers.parseEther(v("f-bond")) }), btn);
+    if (a === "commit") return send(`Commit job #${j.id}`, (c) => c.commit(j.id, ethers.keccak256(ethers.toUtf8Bytes(v("f-result")))), btn);
+    if (["cancel", "slash", "confirm", "reject", "claim"].includes(a)) return send(`${a[0].toUpperCase() + a.slice(1)} job #${j.id}`, (c) => c[a](j.id), btn);
+  } catch (e) { toast(esc(e.shortMessage || e.message), true); }
+}
 addEventListener("keydown", (e) => { if (e.key === "Escape" && S.open != null) { S.open = null; drawer(null); } });
 
 S.view = location.hash.slice(1) || "overview";
 load().then((d) => {
   S.data = d; render(); setInterval(tick, 1000);
-  if (CFG.ADDRESS) setInterval(() => load().then((x) => { S.data = x; render(); }).catch(() => {}), 20000);
+  if (CFG.ADDRESS) setInterval(() => refresh().catch(() => {}), 8000);
 }).catch((e) => { $("view").innerHTML = `<div class="panel"><div class="empty">Failed to load: ${esc(e.message)}</div></div>`; });
 </script>
 </body>
