@@ -67,18 +67,40 @@
     };
   }
 
+  // ponytail: the public Monad RPC allows 15 requests/sec, so reads go in small paced chunks.
+  // Switch to a multicall contract if job counts grow large.
+  async function chunked(fns, size = 5) {
+    const out = [];
+    for (let i = 0; i < fns.length; i += size) {
+      out.push(...(await Promise.all(fns.slice(i, i + size).map((f) => f()))));
+      if (i + size < fns.length) await new Promise((r) => setTimeout(r, 400));
+    }
+    return out;
+  }
+
+  // The RPC answers over-limit calls with JSON-RPC error -32011 instead of HTTP 429, so retry those here.
+  class PacedProvider extends ethers.JsonRpcProvider {
+    async _send(payload) {
+      for (let attempt = 0; ; attempt++) {
+        const res = await super._send(payload);
+        if (attempt >= 5 || !res.some((r) => r.error && r.error.code === -32011)) return res;
+        await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+      }
+    }
+  }
+  const provider = CFG.ADDRESS ? new PacedProvider(CFG.RPC, undefined, { batchMaxCount: 1 }) : null;
   async function load() {
     if (!CFG.ADDRESS) return sample();
-    const c = new ethers.Contract(CFG.ADDRESS, ABI, new ethers.JsonRpcProvider(CFG.RPC));
+    const c = new ethers.Contract(CFG.ADDRESS, ABI, provider);
     const count = Number(await c.jobCount());
-    const raw = await Promise.all([...Array(count).keys()].map((i) => c.jobs(i)));
+    const raw = await chunked([...Array(count).keys()].map((i) => () => c.jobs(i)));
     const jobs = raw.map((j, i) => ({
       id: i, agentId: Number(j.agentId), payment: ethers.formatEther(j.payment), bond: ethers.formatEther(j.bond),
       deadline: Number(j.deadline), state: STATES[Number(j.state)], buyer: j.buyer, judge: j.judge, agent: j.agent,
       resultHash: /^0x0+$/.test(j.resultHash) ? "" : j.resultHash,
     }));
     const ids = [...new Set(jobs.map((j) => j.agentId))];
-    const agents = await Promise.all(ids.map(async (id) => ({ id, completed: Number(await c.completed(id)), slashed: Number(await c.slashed(id)) })));
+    const agents = await chunked(ids.map((id) => async () => ({ id, completed: Number(await c.completed(id)), slashed: Number(await c.slashed(id)) })), 3);
     return { source: "live", jobs, agents };
   }
 
@@ -118,5 +140,5 @@
   }
   document.head.insertAdjacentHTML("beforeend", `<link rel="icon" href="data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#000"/><path d="M11 14v-3a5 5 0 0 1 10 0v3" stroke="#2B59FF" stroke-width="2.5" fill="none" stroke-linecap="round"/><rect x="8" y="14" width="16" height="11" rx="3" fill="#2B59FF"/></svg>')}">`);
 
-  window.P = { CFG, STATES, JUDGE_WINDOW, $, esc, reduce, short, link, avatar, svg, stateIcon, load, countdown, ring, seedSpans, countUp, reveal };
+  window.P = { CFG, STATES, JUDGE_WINDOW, $, esc, reduce, short, link, avatar, svg, stateIcon, load, provider, countdown, ring, seedSpans, countUp, reveal };
 })();
