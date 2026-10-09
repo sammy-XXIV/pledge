@@ -77,7 +77,10 @@ h2{font:600 12px/1 Inter,sans-serif;letter-spacing:.16em;text-transform:uppercas
 .clear{color:var(--blue)}
 
 /* agents */
-.ag{grid-template-columns:minmax(0,1.5fr) 100px 100px minmax(0,1fr)}
+.ag{grid-template-columns:minmax(0,1.5fr) 90px 90px 150px minmax(0,1fr)}
+.kv.text{padding-bottom:4px}.kv.text p{margin:0;padding:0 16px 12px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.field textarea{background:#000;border:1px solid var(--hair);border-radius:10px;padding:10px 12px;color:#fff;font:500 14px/1.4 Inter,sans-serif;width:100%;box-sizing:border-box;resize:vertical}
+.field textarea:focus{outline:2px solid var(--blue);border-color:transparent}
 .ag .n{font-family:"Bebas Neue",Impact,sans-serif;font-size:28px;line-height:1}
 .bar{height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;display:flex}
 .bar i{display:block;height:100%}
@@ -157,8 +160,8 @@ const sample = () => S.data.source === "sample";
 
 // ---- wallet + contract writes (any injected EIP-1193 wallet, e.g. MetaMask)
 const WRITE_ABI = [
-  "function create(uint256 agentId, address judge, uint64 deadline) payable returns (uint256)",
-  "function accept(uint256 jobId) payable", "function commit(uint256 jobId, bytes32 resultHash)",
+  "function create(uint256 agentId, address judge, uint64 deadline, string spec) payable returns (uint256)",
+  "function accept(uint256 jobId) payable", "function commit(uint256 jobId, bytes32 resultHash, string resultURI)",
   "function confirm(uint256 jobId)", "function reject(uint256 jobId)", "function slash(uint256 jobId)",
   "function claim(uint256 jobId)", "function cancel(uint256 jobId)", "function withdraw()",
   "function credits(address) view returns (uint256)", "function identity() view returns (address)",
@@ -221,16 +224,39 @@ function actions(j) {
     if (W.owners[j.agentId] === W.addr) out.push(`<label class="field">Bond (MON)<input id="f-bond" value="${Number(j.payment) / 2}"></label><button class="btn" data-act="accept">Accept with bond</button>`);
     if (me(j.buyer)) out.push('<button class="btn ghost" data-act="cancel">Cancel job</button>');
   } else if (isLate(j)) out.push('<button class="btn" data-act="slash">Slash bond to buyer</button>');
-  else if (j.state === "Active" && me(j.agent)) out.push('<label class="field">Result<input id="f-result" value="report-v1.pdf"></label><button class="btn" data-act="commit">Commit result</button>');
+  else if (j.state === "Active" && me(j.agent)) out.push('<label class="field">Result<textarea id="f-result" rows="3">Done: see summary.</textarea></label><button class="btn" data-act="commit">Commit result</button>');
   if (j.state === "Committed" && me(j.judge)) out.push('<div class="row2"><button class="btn" data-act="confirm">Confirm, pay agent</button><button class="btn ghost" data-act="reject">Reject, slash</button></div>');
   if (canClaim(j) && me(j.agent)) out.push('<button class="btn ghost" data-act="claim">Claim payment and bond</button>');
   return out.length ? `<div class="act"><span class="h">Take action</span>${out.join("")}</div>` : "";
+}
+const dataURI = (text) => "data:text/plain;base64," + btoa(unescape(encodeURIComponent(text)));
+function readURI(uri) { // inline data: URIs are shown as text; anything else is linked
+  const m = /^data:([^,]*?)(;base64)?,(.*)$/s.exec(uri || ""); if (!m) return null;
+  try { return m[2] ? decodeURIComponent(escape(atob(m[3]))) : decodeURIComponent(m[3]); } catch { return null; }
+}
+const IDENTITY_ABI = ["function register(string agentURI) returns (uint256 agentId)", "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)"];
+function agentCard(name, description, endpoint) { // ERC-8004 registration file, stored on-chain as a base64 data URI
+  const card = { type: "https://eips.ethereum.org/EIPS/eip-8004#registration-v1", name, description, image: "",
+    services: endpoint ? [{ name: "web", endpoint }] : [], active: true, supportedTrust: ["reputation", "crypto-economic"] };
+  return "data:application/json;base64," + btoa(unescape(encodeURIComponent(JSON.stringify(card))));
+}
+function newAgentForm() {
+  $("drawer").innerHTML = `<div class="dhead"><h3>Register agent</h3><button class="x" id="close" aria-label="Close">${svg("x")}</button></div>
+    <p class="k" style="margin:0 0 8px;font-size:14px">Mints an ERC-8004 identity for your agent. Its Pledge outcomes are posted to the ERC-8004 Reputation Registry.</p>
+    <div class="act">
+      <label class="field">Name<input id="f-name" value="Summarizer"></label>
+      <label class="field">Description<textarea id="f-desc" rows="2">Summarizes any text in one line.</textarea></label>
+      <label class="field">Endpoint (optional)<input id="f-endpoint" placeholder="https://…"></label>
+      <button class="btn" data-act="register">Register on ERC-8004</button>
+    </div>
+    <div class="next" style="margin-top:16px"><b>Running it</b>Point the Pledge SDK at your agent ID: <code>pledge.serve(agentId, handler)</code></div>`;
 }
 function newJobForm() {
   $("drawer").innerHTML = `<div class="dhead"><h3>New job</h3><button class="x" id="close" aria-label="Close">${svg("x")}</button></div>
     <p class="k" style="margin:0 0 8px;font-size:14px">Escrow a payment for an agent. If it misses the deadline, its bond comes to you.</p>
     <div class="act">
-      <label class="field">Agent ID (ERC-8004)<input id="f-agent" inputmode="numeric" value="${S.data.agents[0]?.id ?? ""}"></label>
+      <label class="field">Agent ID (ERC-8004)<input id="f-agent" inputmode="numeric" value="${S.newAgent ?? S.data.agents[0]?.id ?? ""}"></label>
+      <label class="field">Task<textarea id="f-spec" rows="3" placeholder="What should the agent do?">Summarize this in one line: Pledge lets AI agents stake a bond on every job they accept.</textarea></label>
       <div class="row2"><label class="field">Payment (MON)<input id="f-pay" value="0.01"></label><label class="field">Deadline (minutes)<input id="f-min" value="5"></label></div>
       <label class="field">Judge<input id="f-judge" value="${W.addr || ""}" placeholder="0x…"></label>
       <button class="btn" data-act="create">Escrow payment</button>
@@ -281,22 +307,23 @@ function jobs() {
 
 function agents() {
   const rows = S.data.agents.slice().sort((a, b) => b.completed - a.completed || a.slashed - b.slashed);
-  const head = '<div class="r hd ag"><span>Agent</span><span>Delivered</span><span>Slashed</span><span>Record</span></div>';
+  const head = '<div class="r hd ag"><span>Agent</span><span>Delivered</span><span>Slashed</span><span>ERC-8004 score</span><span>Record</span></div>';
   const row = (a) => {
     const tot = a.completed + a.slashed, pct = tot ? (a.completed / tot) * 100 : 0;
     return `<button class="r ag" data-agent="${a.id}"><span class="who">${avatar(a.id)}<span class="two"><b>Agent #${a.id}</b><small>ERC-8004 identity</small></span></span>
       <span class="n">${a.completed}</span><span class="n">${a.slashed}</span>
+      <span class="two"><b>${a.score ? a.score.value + " / 100" : "—"}</b><small>${a.score ? `${a.score.count} review${a.score.count === 1 ? "" : "s"} by Pledge` : "no reviews yet"}</small></span>
       <span class="bar">${tot ? `<i class="ok" style="width:${pct}%"></i><i class="no" style="width:${100 - pct}%"></i>` : ""}</span></button>`;
   };
-  return `<div class="top"><div><h1>Agents</h1><p>Track record straight from the contract.</p></div></div>
+  return `<div class="top"><div><h1>Agents</h1><p>Track record from the contract, mirrored to the ERC-8004 Reputation Registry.</p></div>${CFG.ADDRESS ? '<button class="btn" data-act="newagent">Register agent</button>' : ""}</div>
     <div class="panel">${rows.length ? head + rows.map(row).join("") : '<div class="empty">No agents yet.</div>'}</div>`;
 }
 
-const sigOf = (j) => (j === "new" ? "new" : j ? `${j.id}:${j.state}:${W.addr}:${isLate(j)}:${canClaim(j)}:${W.owners[j.agentId]}` : "");
+const sigOf = (j) => (j === "new" || j === "agent" ? j : j ? `${j.id}:${j.state}:${W.addr}:${isLate(j)}:${canClaim(j)}:${W.owners[j.agentId]}` : "");
 function drawer(j) {
   S.sig = sigOf(j);
   if (!j) { $("drawer").classList.remove("on"); $("veil").classList.remove("on"); return; }
-  if (j === "new") { newJobForm(); $("drawer").classList.add("on"); $("veil").classList.add("on"); return; }
+  if (j === "new" || j === "agent") { (j === "new" ? newJobForm : newAgentForm)(); $("drawer").classList.add("on"); $("veil").classList.add("on"); return; }
   const c = countdown(j, now());
   let next = "Nothing left to do. This job is settled.";
   if (j.state === "Open") next = `Waiting for the agent owner to call <code>accept(${j.id})</code> with a bond.`;
@@ -310,6 +337,8 @@ function drawer(j) {
     <div><span>Deadline</span><b>${new Date(j.deadline * 1000).toLocaleString()}</b></div><div><span>Status</span><b>${esc(c.t)}</b></div></div>
     <div class="kv"><div><span>Buyer</span><code>${short(j.buyer)}</code></div><div><span>Judge</span><code>${short(j.judge)}</code></div>
     <div><span>Result hash</span><code>${j.resultHash ? short(j.resultHash) : "not committed"}</code></div></div>
+    ${j.spec ? `<div class="kv text"><div><span>Task</span></div><p>${esc(j.spec)}</p></div>` : ""}
+    ${j.resultURI ? `<div class="kv text"><div><span>Result</span>${readURI(j.resultURI) == null ? `<a class="clear" href="${esc(j.resultURI)}" target="_blank" rel="noopener">Open</a>` : ""}</div><p>${esc(readURI(j.resultURI) ?? j.resultURI)}</p></div>` : ""}
     <div class="next"><b>What happens next</b>${next}</div>`;
   $("drawer").classList.add("on"); $("veil").classList.add("on");
   if (!$("drawer").contains(document.activeElement)) $("close").focus();
@@ -320,7 +349,7 @@ function render() {
   menu(); seedSpans(S.data.jobs);
   $("view").innerHTML = { overview, jobs, agents }[S.view]();
   tick();
-  const o = S.open === "new" ? "new" : S.data.jobs.find((j) => j.id === S.open);
+  const o = S.open === "new" || S.open === "agent" ? S.open : S.data.jobs.find((j) => j.id === S.open);
   if (sigOf(o) !== S.sig) drawer(o); // keep typed input: only redraw the drawer when its job changed
 }
 function tick() {
@@ -348,17 +377,37 @@ async function act(a, btn) {
   try {
     if (a === "connect") return connect();
     if (a === "withdraw") return send("Withdraw", (c) => c.withdraw(), btn);
+    if (a === "newagent") { if (!W.signer) await connect(); if (!W.signer) return; S.open = "agent"; return drawer("agent"); }
+    if (a === "register") {
+      const name = v("f-name"); if (!name) return toast("Give the agent a name.", true);
+      if (!W.signer) return connect();
+      const reg = new ethers.Contract(CFG.IDENTITY, IDENTITY_ABI, W.signer);
+      btn.disabled = true;
+      try {
+        toast("Register agent: confirm in your wallet");
+        const tx = await reg.register(agentCard(name, v("f-desc"), v("f-endpoint")));
+        toast(`Register agent: sent <code>${short(tx.hash)}</code>`);
+        const r = await tx.wait();
+        const ev = r.logs.map((l) => { try { return reg.interface.parseLog(l); } catch { return null; } }).find((e) => e?.name === "Transfer");
+        S.newAgent = Number(ev.args.tokenId);
+        toast(`Agent #${S.newAgent} registered on ERC-8004`);
+        $("drawer").querySelector(".act").innerHTML = `<span class="h">Agent #${S.newAgent} is live</span><p class="k" style="margin:0;font-size:14px">Run it with <code>pledge.serve(${S.newAgent}, handler)</code>, then post it a job.</p><button class="btn" data-act="newjob">Post a job for agent #${S.newAgent}</button>`;
+      } catch (e) { toast("Register agent failed: " + esc(e.shortMessage || e.message), true); btn.disabled = false; }
+      return;
+    }
     if (a === "newjob") { if (!W.signer) await connect(); if (!W.signer) return; S.open = "new"; return drawer("new"); }
     if (a === "create") {
       const agentId = BigInt(v("f-agent")), value = ethers.parseEther(v("f-pay")), mins = Number(v("f-min")), judge = v("f-judge");
       if (!(mins > 0) || value <= 0n || !ethers.isAddress(judge)) return toast("Check the agent ID, payment, deadline and judge address.", true);
-      const r = await send("Create job", (c) => c.create(agentId, judge, now() + Math.round(mins * 60), { value }), btn);
+      const spec = v("f-spec");
+      if (!spec) return toast("Describe the task for the agent.", true);
+      const r = await send("Create job", (c) => c.create(agentId, judge, now() + Math.round(mins * 60), spec, { value }), btn);
       if (r) { S.open = S.data.jobs.length - 1; S.view = "jobs"; history.replaceState(null, "", location.search + "#jobs"); render(); drawer(S.data.jobs[S.open]); }
       return;
     }
     if (!j) return;
     if (a === "accept") return send(`Accept job #${j.id}`, (c) => c.accept(j.id, { value: ethers.parseEther(v("f-bond")) }), btn);
-    if (a === "commit") return send(`Commit job #${j.id}`, (c) => c.commit(j.id, ethers.keccak256(ethers.toUtf8Bytes(v("f-result")))), btn);
+    if (a === "commit") { const res = v("f-result"); return send(`Commit job #${j.id}`, (c) => c.commit(j.id, ethers.keccak256(ethers.toUtf8Bytes(res)), dataURI(res)), btn); }
     if (["cancel", "slash", "confirm", "reject", "claim"].includes(a)) return send(`${a[0].toUpperCase() + a.slice(1)} job #${j.id}`, (c) => c[a](j.id), btn);
   } catch (e) { toast(esc(e.shortMessage || e.message), true); }
 }
