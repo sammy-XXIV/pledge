@@ -21,7 +21,7 @@ async function main() {
   console.log("agentId", agentId.toString());
 
   const open = async (secs) => {
-    const tx = await pledge.create(agentId, me.address, (await now()) + secs, { value: PAY });
+    const tx = await pledge.create(agentId, me.address, (await now()) + secs, "Summarize the Q3 report", { value: PAY });
     log(`create job (deadline +${secs}s)`, tx); await tx.wait();
     return (await pledge.jobCount()) - 1n;
   };
@@ -29,7 +29,7 @@ async function main() {
   // Job A: delivered on time, judge confirms
   const a = await open(300);
   tx = await pledge.accept(a, { value: BOND }); log("accept (bond staked)", tx); await tx.wait();
-  tx = await pledge.commit(a, ethers.keccak256(ethers.toUtf8Bytes("result"))); log("commit result hash", tx); await tx.wait();
+  tx = await pledge.commit(a, ethers.keccak256(ethers.toUtf8Bytes("result")), "data:,result"); log("commit result hash", tx); await tx.wait();
   tx = await pledge.confirm(a); log("confirm -> agent paid", tx); await tx.wait();
 
   // Job B: agent never commits, anyone slashes

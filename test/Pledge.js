@@ -11,9 +11,9 @@ async function setup() {
   const [buyer, agent, judge, other] = await ethers.getSigners();
   const id = await (await ethers.getContractFactory("MockIdentity")).deploy();
   await id.connect(agent).register(); // agentId 1
-  const pledge = await (await ethers.getContractFactory("Pledge")).deploy(await id.getAddress());
+  const pledge = await (await ethers.getContractFactory("Pledge")).deploy(await id.getAddress(), ethers.ZeroAddress);
   const deadline = (await time.latest()) + 100;
-  await pledge.connect(buyer).create(1, judge.address, deadline, { value: PAY });
+  await pledge.connect(buyer).create(1, judge.address, deadline, "Summarize the Q3 report", { value: PAY });
   return { buyer, agent, judge, other, pledge, deadline };
 }
 async function active() {
@@ -23,7 +23,7 @@ async function active() {
 }
 async function committed() {
   const s = await active();
-  await s.pledge.connect(s.agent).commit(0, HASH);
+  await s.pledge.connect(s.agent).commit(0, HASH, "data:,summary");
   return s;
 }
 
@@ -58,7 +58,7 @@ describe("Pledge", () => {
   it("cannot commit after the deadline", async () => {
     const { pledge, agent, deadline } = await loadFixture(active);
     await time.increaseTo(deadline + 1);
-    await expect(pledge.connect(agent).commit(0, HASH)).to.be.revertedWith("too late");
+    await expect(pledge.connect(agent).commit(0, HASH, "data:,summary")).to.be.revertedWith("too late");
   });
 
   it("a committed job cannot be slashed for lateness", async () => {
@@ -93,6 +93,14 @@ describe("Pledge", () => {
     expect(await a.pledge.credits(a.buyer.address)).to.equal(PAY);
     const b = await loadFixture(active);
     await expect(b.pledge.connect(b.buyer).cancel(0)).to.be.revertedWith("not open");
+  });
+
+  it("stores the task for the agent and the result location for the judge", async () => {
+    const { pledge, agent } = await loadFixture(active);
+    expect(await pledge.specs(0)).to.equal("Summarize the Q3 report");
+    await expect(pledge.connect(agent).commit(0, HASH, "ipfs://bafy-summary"))
+      .to.emit(pledge, "Committed").withArgs(0, HASH, "ipfs://bafy-summary");
+    expect(await pledge.resultURIs(0)).to.equal("ipfs://bafy-summary");
   });
 
   it("no double settlement", async () => {

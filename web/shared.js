@@ -1,14 +1,21 @@
 // Shared data + helpers for index.html (landing) and app.html (app). Plain script, works from file://.
 (function () {
   const q = new URLSearchParams(location.search);
-  const CFG = { ADDRESS: q.get("addr") || "", RPC: q.get("rpc") || "https://testnet-rpc.monad.xyz" };
+  const CFG = {
+    ADDRESS: q.get("addr") || "", RPC: q.get("rpc") || "https://testnet-rpc.monad.xyz",
+    IDENTITY: "0x8004A818BFB912233c491871b3d84c89A494BD9e", REPUTATION: "0x8004B663056A597Dffe9eCcC1965A193B7388713",
+  };
+  const REP_ABI = ["function getSummary(uint256 agentId, address[] clientAddresses, string tag1, string tag2) view returns (uint64 count, int128 summaryValue, uint8 summaryValueDecimals)"];
+  const specCache = {}, resultCache = {}; // both are write-once on chain, so fetch each only once
   const STATES = ["None", "Open", "Active", "Committed", "Paid", "Slashed", "Cancelled"];
   const JUDGE_WINDOW = 60;
   const ABI = [
     "function jobCount() view returns (uint256)",
     "function jobs(uint256) view returns (address buyer,address judge,uint256 agentId,address agent,uint256 payment,uint256 bond,uint64 deadline,bytes32 resultHash,uint8 state)",
     "function completed(uint256) view returns (uint256)",
-    "function slashed(uint256) view returns (uint256)"
+    "function slashed(uint256) view returns (uint256)",
+    "function specs(uint256) view returns (string)",
+    "function resultURIs(uint256) view returns (string)"
   ];
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -99,8 +106,16 @@
       deadline: Number(j.deadline), state: STATES[Number(j.state)], buyer: j.buyer, judge: j.judge, agent: j.agent,
       resultHash: /^0x0+$/.test(j.resultHash) ? "" : j.resultHash,
     }));
+    await chunked(jobs.filter((j) => !(j.id in specCache)).map((j) => async () => { specCache[j.id] = await c.specs(j.id).catch(() => ""); }));
+    await chunked(jobs.filter((j) => j.resultHash && !(j.id in resultCache)).map((j) => async () => { resultCache[j.id] = await c.resultURIs(j.id).catch(() => ""); }));
+    jobs.forEach((j) => { j.spec = specCache[j.id] || ""; j.resultURI = resultCache[j.id] || ""; });
     const ids = [...new Set(jobs.map((j) => j.agentId))];
-    const agents = await chunked(ids.map((id) => async () => ({ id, completed: Number(await c.completed(id)), slashed: Number(await c.slashed(id)) })), 3);
+    const rep = new ethers.Contract(CFG.REPUTATION, REP_ABI, provider);
+    const agents = await chunked(ids.map((id) => async () => {
+      const a = { id, completed: Number(await c.completed(id)), slashed: Number(await c.slashed(id)), score: null };
+      try { const s = await rep.getSummary(id, [CFG.ADDRESS], "pledge", ""); if (s.count > 0n) a.score = { count: Number(s.count), value: Number(s.summaryValue) }; } catch {}
+      return a;
+    }), 2);
     return { source: "live", jobs, agents };
   }
 

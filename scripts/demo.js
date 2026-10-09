@@ -10,11 +10,11 @@ async function main() {
   const id = await (await ethers.getContractFactory("MockIdentity")).deploy();
   await id.connect(fast).register(); // agentId 1
   await id.connect(slow).register(); // agentId 2
-  const p = await (await ethers.getContractFactory("Pledge")).deploy(await id.getAddress());
+  const p = await (await ethers.getContractFactory("Pledge")).deploy(await id.getAddress(), ethers.ZeroAddress);
 
   const now = await time.latest();
   const open = async (agentId) => {
-    await p.connect(buyer).create(agentId, judge.address, now + 100, { value: PAY });
+    await p.connect(buyer).create(agentId, judge.address, now + 100, "Summarize the Q3 report", { value: PAY });
     return (await p.jobCount()) - 1n;
   };
   const jobA = await open(1), jobB = await open(2);
@@ -22,7 +22,7 @@ async function main() {
   await p.connect(slow).accept(jobB, { value: BOND });
   console.log("both agents bonded", fmt(BOND), "MON each");
 
-  await p.connect(fast).commit(jobA, ethers.keccak256(ethers.toUtf8Bytes("answer")));
+  await p.connect(fast).commit(jobA, ethers.keccak256(ethers.toUtf8Bytes("answer")), "data:,answer");
   await p.connect(judge).confirm(jobA);
   console.log("fast agent delivered -> credit", fmt(await p.credits(fast.address)), "MON, completed =", await p.completed(1));
 
