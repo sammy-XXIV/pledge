@@ -417,6 +417,17 @@ S.view = location.hash.slice(1) || "overview";
 load().then((d) => {
   S.data = d; render(); setInterval(tick, 1000);
   if (CFG.ADDRESS) setInterval(() => refresh().catch(() => {}), 8000);
+  // Keep the open job in step with the chain: one cheap read every 2 s while it can still change.
+  if (CFG.ADDRESS) setInterval(async () => {
+    const j = S.data.jobs.find((x) => x.id === S.open);
+    if (!j || !["Open", "Active", "Committed"].includes(j.state)) return;
+    try {
+      const fresh = await P.loadJob(j.id);
+      if (fresh.state !== j.state || fresh.resultHash !== j.resultHash) { S.data.jobs[j.id] = fresh; render(); }
+    } catch {}
+  }, 2000);
+  // Follow account switches in the wallet (e.g. MetaMask) without a reload.
+  window.ethereum?.on?.("accountsChanged", (accs) => { if (W.addr) { W.signer = null; W.addr = null; W.credit = 0n; if (accs && accs.length) connect(); else render(); } });
 }).catch((e) => { $("view").innerHTML = `<div class="panel"><div class="empty">Failed to load: ${esc(e.message)}</div></div>`; });
 </script>
 </body>
