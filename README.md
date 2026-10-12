@@ -13,6 +13,22 @@ Per-job bonds for AI agents on Monad. A buyer escrows payment for a task, the ag
 | App (local) | open `web/app.html`; the contract above is the default |
 | Source | `contracts/Pledge.sol` (197 lines, no proxy, no admin, no owner, no loops, 6.8 kB runtime bytecode) |
 
+## Who it is for, and what it solves
+
+**Problem.** An AI agent says "done" and the buyer has already paid. The result can be late, empty or wrong, and a reputation score gives the buyer nothing to collect.
+
+**Intended users.** Developers building agent marketplaces, agent frameworks and orchestration layers, who need a settlement and reputation primitive they can call (`contracts/Pledge.sol` plus `sdk/pledge.js`). Teams that run agents get a way to prove their agents stake money on their work, and buyers get automatic recourse. The web app is a reference front end on top of the same primitive.
+
+**Track fit.** Trust, Identity & AI Infrastructure: a protocol other applications build on, not a standalone consumer product. It uses ERC-8004 identity as the key for bonds and writes outcomes to the ERC-8004 Reputation Registry.
+
+## AI disclosure
+
+This project was built with AI coding tools. **Claude Code (Anthropic's Claude models) wrote or co-wrote most of the code in this repository under the author's direction**: the Solidity contract, the tests, the SDK, the example scripts, the web app, the live-check scripts and this README, including an adversarial review of the contract that produced the fixes listed in section 5. The author directed the scope and design, approved each step including the testnet deployment, and the result was exercised live on Monad testnet (the checks are in `scripts/` and the 40 tests run with `npx hardhat test`).
+
+The narration in the demo video is an AI-generated voice (Higgsfield text-to-speech). The video was recorded by a script that drives a browser with a throwaway testnet wallet. The transactions in it are real and appear on chain; no part of the video is a mock-up.
+
+No pre-existing code was used as a foundation. All commits are dated within the hackathon period (first commit 2026-10-06). External dependencies and the contracts Pledge integrates with are listed under [Technology stack and attributions](#10-technology-stack-and-attributions).
+
 ## Contents
 
 1. [Model](#1-model): actors, state machine, time model
@@ -23,7 +39,9 @@ Per-job bonds for AI agents on Monad. A buyer escrows payment for a task, the ag
 6. [SDK](#6-sdk)
 7. [App and RPC handling](#7-app-and-rpc-handling)
 8. [Tests](#8-tests)
-9. [Reproduce](#9-reproduce)
+9. [Why Monad](#9-why-monad)
+10. [Technology stack and attributions](#10-technology-stack-and-attributions)
+11. [Reproduce](#11-reproduce)
 
 ---
 
@@ -295,7 +313,38 @@ Loop semantics: it starts at the current `jobCount()` (only new jobs), wraps eac
 
 ---
 
-## 9. Reproduce
+## 9. Why Monad
+
+Pledge needs three things from its chain, and Monad provides them:
+
+- **Short, enforceable deadlines.** Lateness is decided by `block.timestamp`, so a 30-second job only works if blocks land fast enough that a commit made at second 29 is included before second 30. In our live runs a `create`, `accept`, `commit` and `confirm` cycle completed in well under a minute end to end, and 20-second jobs were enforceable and slashable on the deployed contract (see `scripts/reputation-check.js` and `scripts/audit-live-check.js`).
+- **Cheap per-job settlement.** A bond per job only makes sense if escrow, commit and settlement cost little compared with the job. Each step is a single O(1) call (section 2 lists gas), and every settlement also performs a reputation write of roughly 300k gas. On Monad that is practical for jobs worth cents.
+- **ERC-8004 is deployed on Monad.** The Identity and Reputation registries already exist on Monad testnet (`0x8004A818…BD9e`, `0x8004B663…8713`), so Pledge can use identity as the bond key and publish outcomes to the registry other applications read, instead of inventing its own.
+
+Deployed contract: `0xC1BC1bBb8C4420aF4167FE7D3F2e834Ff46737e4` (Monad testnet, chain 10143). Transactions from the live checks are on that contract's history.
+
+---
+
+## 10. Technology stack and attributions
+
+| Layer | What | Notes |
+| --- | --- | --- |
+| Contract | Solidity ^0.8.24 (EVM target cancun) | no external contract libraries; `Pledge.sol` is self-contained |
+| Build and test | Hardhat 2 with `@nomicfoundation/hardhat-toolbox` (ethers v6, Chai) | MIT |
+| Client | ethers v6, plain JavaScript | SDK in `sdk/pledge.js`; web app is static HTML, CSS and JS with no build step |
+| Web delivery | GitHub Pages (`gh-pages` branch = `web/`) | |
+| Static analysis | Aderyn | run during the audit; not a runtime dependency |
+| Config | dotenv | |
+| Fonts | Bebas Neue, Inter, JetBrains Mono via Google Fonts | SIL Open Font License |
+| ethers in the browser | ethers v6 UMD from cdnjs | |
+
+**External contracts Pledge integrates with (not written by us):** the ERC-8004 Identity Registry (`ownerOf`, `register`, `tokenURI`) and Reputation Registry (`giveFeedback`, `getSummary`). They are referenced by address; none of their code is copied into this repository. ERC-8004 is specified at https://eips.ethereum.org/EIPS/eip-8004.
+
+**License.** MIT, see `LICENSE`.
+
+---
+
+## 11. Reproduce
 
 ```bash
 npm install

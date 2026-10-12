@@ -1,14 +1,14 @@
 {
   "name": "pledge",
   "version": "1.0.0",
-  "description": "",
+  "description": "Per-job bonds for AI agents on Monad: escrow, slashing and ERC-8004 reputation",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "hardhat test"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Samson Samuel",
+  "license": "MIT",
   "type": "commonjs",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
@@ -16,5 +16,9 @@
   },
   "dependencies": {
     "dotenv": "^18.0.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sammy-XXIV/pledge.git"
   }
 }
