@@ -6,7 +6,7 @@ const { Pledge } = require("../sdk/pledge");
 (async () => {
   const pledge = new Pledge({ privateKey: process.env.BUYER_KEY || process.env.PRIVATE_KEY });
   const spec = process.argv[2] || "Pledge lets agents stake a bond on every job. Late agents get slashed to the buyer.";
-  const id = await pledge.createJob({ agentId: process.env.AGENT_ID, spec, payment: "0.01", minutes: 3 });
+  const id = await pledge.createJob({ agentId: process.env.AGENT_ID, spec, payment: "0.01", minutes: 3, minBond: "0.005", judgeWindowSec: 120 });
   console.log(`job #${id} posted for agent #${process.env.AGENT_ID}`);
   for (;;) {
     const job = await pledge.job(id);

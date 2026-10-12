@@ -8,10 +8,10 @@
   const REP_ABI = ["function getSummary(uint256 agentId, address[] clientAddresses, string tag1, string tag2) view returns (uint64 count, int128 summaryValue, uint8 summaryValueDecimals)"];
   const specCache = {}, resultCache = {}; // both are write-once on chain, so fetch each only once
   const STATES = ["None", "Open", "Active", "Committed", "Paid", "Slashed", "Cancelled"];
-  const JUDGE_WINDOW = 60;
+  const MIN_JUDGE_WINDOW = 60;
   const ABI = [
     "function jobCount() view returns (uint256)",
-    "function jobs(uint256) view returns (address buyer,address judge,uint256 agentId,address agent,uint256 payment,uint256 bond,uint64 deadline,bytes32 resultHash,uint8 state)",
+    "function jobs(uint256) view returns (address buyer,address judge,uint256 agentId,address agent,uint256 payment,uint256 bond,uint256 minBond,uint64 deadline,uint32 judgeWindow,uint64 committedAt,bytes32 resultHash,uint8 state)",
     "function completed(uint256) view returns (uint256)",
     "function slashed(uint256) view returns (uint256)",
     "function specs(uint256) view returns (string)",
@@ -67,7 +67,7 @@
     return {
       source: "sample",
       jobs: rows.map(([id, agentId, payment, bond, deadline, state]) => ({
-        id, agentId, payment, bond, deadline, state, buyer: hex(id), judge: hex(99), agent: hex(agentId + 40),
+        id, agentId, payment, bond, deadline, state, minBond: "0", judgeWindow: 3600, committedAt: n - 400, buyer: hex(id), judge: hex(99), agent: hex(agentId + 40),
         resultHash: ["Committed", "Paid"].includes(state) ? hex(id + 200) + "0000".slice(0, 0) : "",
       })),
       agents: [{ id: 1, completed: 1, slashed: 0 }, { id: 2, completed: 0, slashed: 1 }, { id: 3, completed: 1, slashed: 0 }],
@@ -102,6 +102,7 @@
     const j = await c.jobs(id);
     const job = {
       id, agentId: Number(j.agentId), payment: ethers.formatEther(j.payment), bond: ethers.formatEther(j.bond),
+      minBond: ethers.formatEther(j.minBond), judgeWindow: Number(j.judgeWindow), committedAt: Number(j.committedAt),
       deadline: Number(j.deadline), state: STATES[Number(j.state)], buyer: j.buyer, judge: j.judge, agent: j.agent,
       resultHash: /^0x0+$/.test(j.resultHash) ? "" : j.resultHash,
     };
@@ -117,6 +118,7 @@
     const raw = await chunked([...Array(count).keys()].map((i) => () => c.jobs(i)));
     const jobs = raw.map((j, i) => ({
       id: i, agentId: Number(j.agentId), payment: ethers.formatEther(j.payment), bond: ethers.formatEther(j.bond),
+      minBond: ethers.formatEther(j.minBond), judgeWindow: Number(j.judgeWindow), committedAt: Number(j.committedAt),
       deadline: Number(j.deadline), state: STATES[Number(j.state)], buyer: j.buyer, judge: j.judge, agent: j.agent,
       resultHash: /^0x0+$/.test(j.resultHash) ? "" : j.resultHash,
     }));
@@ -140,7 +142,7 @@
         ? { t: `${left}s left`, f: "", late: false, frac: Math.max(0, Math.min(1, left / (span[j.id] || left || 1))) }
         : { t: `${-left}s late`, f: '<span class="flag">LATE · SLASHABLE</span>', late: true, frac: 0 };
     }
-    if (j.state === "Committed" && now > j.deadline + JUDGE_WINDOW)
+    if (j.state === "Committed" && now > j.committedAt + j.judgeWindow)
       return { t: "Judge window over", f: '<span class="flag ok">AGENT CAN CLAIM</span>', late: false, frac: 0 };
     if (j.state === "Committed") return { t: "Awaiting judge", f: "", late: false, frac: 0 };
     return { t: "Deadline " + new Date(j.deadline * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), f: "", late: false, frac: 0 };
@@ -169,5 +171,5 @@
   }
   document.head.insertAdjacentHTML("beforeend", `<link rel="icon" href="data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#000"/><path d="M11 14v-3a5 5 0 0 1 10 0v3" stroke="#2B59FF" stroke-width="2.5" fill="none" stroke-linecap="round"/><rect x="8" y="14" width="16" height="11" rx="3" fill="#2B59FF"/></svg>')}">`);
 
-  window.P = { CFG, STATES, JUDGE_WINDOW, $, esc, reduce, short, link, avatar, svg, stateIcon, load, loadJob, provider, countdown, ring, seedSpans, countUp, reveal };
+  window.P = { CFG, STATES, MIN_JUDGE_WINDOW, $, esc, reduce, short, link, avatar, svg, stateIcon, load, loadJob, provider, countdown, ring, seedSpans, countUp, reveal };
 })();

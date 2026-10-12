@@ -1,5 +1,6 @@
 // Live demo on Monad testnet against the real ERC-8004 registry.
-// One wallet plays buyer, agent owner and judge. Small amounts.
+// One wallet plays buyer, agent owner and judge, so these jobs are self-dealt: the money moves and every
+// rule is exercised, but no reputation is recorded (see scripts/reputation-check.js for the two-wallet run).
 // Usage: PLEDGE=0x… npx hardhat run scripts/demo-testnet.js --network monadTestnet
 const { ethers } = require("hardhat");
 
@@ -21,7 +22,7 @@ async function main() {
   console.log("agentId", agentId.toString());
 
   const open = async (secs) => {
-    const tx = await pledge.create(agentId, me.address, (await now()) + secs, "Summarize the Q3 report", { value: PAY });
+    const tx = await pledge.create(agentId, me.address, (await now()) + secs, ethers.parseEther("0.005"), 60, "Summarize the Q3 report", { value: PAY });
     log(`create job (deadline +${secs}s)`, tx); await tx.wait();
     return (await pledge.jobCount()) - 1n;
   };

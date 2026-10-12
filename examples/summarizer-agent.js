@@ -18,5 +18,9 @@ function summarize(text) {
     console.log(`registered ERC-8004 agent #${agentId} (set AGENT_ID=${agentId} to reuse it)`);
   }
   console.log(`agent #${agentId} serving Pledge jobs…`);
-  pledge.serve(agentId, async (job) => summarize(job.spec));
+  // The buyer picks the judge, so say whose judging you trust. Without this a buyer-judge could reject
+  // good work and keep your bond. Set JUDGE to the address(es) you work with, comma-separated.
+  const trustedJudges = (process.env.JUDGE || "").split(",").filter(Boolean);
+  if (!trustedJudges.length) throw new Error("Set JUDGE=0x… (comma-separated) to the judge address(es) this agent trusts");
+  pledge.serve(agentId, async (job) => summarize(job.spec), { trustedJudges });
 })();

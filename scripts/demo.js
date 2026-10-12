@@ -14,7 +14,7 @@ async function main() {
 
   const now = await time.latest();
   const open = async (agentId) => {
-    await p.connect(buyer).create(agentId, judge.address, now + 100, "Summarize the Q3 report", { value: PAY });
+    await p.connect(buyer).create(agentId, judge.address, now + 100, 0, 60, "Summarize the Q3 report", { value: PAY });
     return (await p.jobCount()) - 1n;
   };
   const jobA = await open(1), jobB = await open(2);

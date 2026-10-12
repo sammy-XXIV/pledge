@@ -154,13 +154,13 @@ const S = { data: { jobs: [], agents: [], source: "sample" }, view: "overview", 
 const TABS = [["overview", "Overview", "grid"], ["jobs", "Jobs", "list"], ["agents", "Agents", "users"]];
 const now = () => Math.floor(Date.now() / 1000);
 const isLate = (j) => j.state === "Active" && j.deadline < now();
-const canClaim = (j) => j.state === "Committed" && now() > j.deadline + P.JUDGE_WINDOW;
+const canClaim = (j) => j.state === "Committed" && now() > j.committedAt + j.judgeWindow;
 const needsAttn = (j) => isLate(j) || canClaim(j);
 const sample = () => S.data.source === "sample";
 
 // ---- wallet + contract writes (any injected EIP-1193 wallet, e.g. MetaMask)
 const WRITE_ABI = [
-  "function create(uint256 agentId, address judge, uint64 deadline, string spec) payable returns (uint256)",
+  "function create(uint256 agentId, address judge, uint64 deadline, uint256 minBond, uint32 judgeWindow, string spec) payable returns (uint256)",
   "function accept(uint256 jobId) payable", "function commit(uint256 jobId, bytes32 resultHash, string resultURI)",
   "function confirm(uint256 jobId)", "function reject(uint256 jobId)", "function slash(uint256 jobId)",
   "function claim(uint256 jobId)", "function cancel(uint256 jobId)", "function withdraw()",
@@ -221,7 +221,7 @@ function actions(j) {
   if (!W.addr) return '<div class="act"><span class="h">Take action</span><button class="btn" data-act="connect">Connect wallet</button></div>';
   const out = [];
   if (j.state === "Open") {
-    if (W.owners[j.agentId] === W.addr) out.push(`<label class="field">Bond (MON)<input id="f-bond" value="${Number(j.payment) / 2}"></label><button class="btn" data-act="accept">Accept with bond</button>`);
+    if (W.owners[j.agentId] === W.addr) out.push(`<label class="field">Bond (MON), at least ${esc(j.minBond)}<input id="f-bond" value="${Math.max(Number(j.minBond), Number(j.payment) / 2)}"></label><button class="btn" data-act="accept">Accept with bond</button>`);
     if (me(j.buyer)) out.push('<button class="btn ghost" data-act="cancel">Cancel job</button>');
   } else if (isLate(j)) out.push('<button class="btn" data-act="slash">Slash bond to buyer</button>');
   else if (j.state === "Active" && me(j.agent)) out.push('<label class="field">Result<textarea id="f-result" rows="3">Done: see summary.</textarea></label><button class="btn" data-act="commit">Commit result</button>');
@@ -230,6 +230,13 @@ function actions(j) {
   return out.length ? `<div class="act"><span class="h">Take action</span>${out.join("")}</div>` : "";
 }
 const dataURI = (text) => "data:text/plain;base64," + btoa(unescape(encodeURIComponent(text)));
+const fmtDur = (s) => (s % 86400 === 0 ? `${s / 86400} d` : s % 3600 === 0 ? `${s / 3600} h` : s % 60 === 0 ? `${s / 60} min` : `${s} s`);
+// A result URI is attacker-controlled: only ever link http(s) and ipfs, never javascript: or other schemes.
+function safeHref(uri) {
+  if (/^ipfs:\/\//i.test(uri)) return "https://ipfs.io/ipfs/" + uri.slice(7).replace(/^ipfs\//i, "");
+  try { const u = new URL(uri); return u.protocol === "https:" || u.protocol === "http:" ? u.href : null; } catch { return null; }
+}
+const resultLink = (uri) => { if (readURI(uri) != null) return ""; const h = safeHref(uri); return h ? `<a class="clear" href="${esc(h)}" target="_blank" rel="noopener noreferrer">Open</a>` : ""; };
 function readURI(uri) { // inline data: URIs are shown as text; anything else is linked
   const m = /^data:([^,]*?)(;base64)?,(.*)$/s.exec(uri || ""); if (!m) return null;
   try { return m[2] ? decodeURIComponent(escape(atob(m[3]))) : decodeURIComponent(m[3]); } catch { return null; }
@@ -258,6 +265,7 @@ function newJobForm() {
       <label class="field">Agent ID (ERC-8004)<input id="f-agent" inputmode="numeric" value="${S.newAgent ?? S.data.agents[0]?.id ?? ""}"></label>
       <label class="field">Task<textarea id="f-spec" rows="3" placeholder="What should the agent do?">Summarize this in one line: Pledge lets AI agents stake a bond on every job they accept.</textarea></label>
       <div class="row2"><label class="field">Payment (MON)<input id="f-pay" value="0.01"></label><label class="field">Deadline (minutes)<input id="f-min" value="5"></label></div>
+      <div class="row2"><label class="field">Minimum bond (MON)<input id="f-minbond" value="0.005"></label><label class="field">Judge window (minutes)<input id="f-jwin" value="60"></label></div>
       <label class="field">Judge<input id="f-judge" value="${W.addr || ""}" placeholder="0x…"></label>
       <button class="btn" data-act="create">Escrow payment</button>
     </div>`;
@@ -335,10 +343,11 @@ function drawer(j) {
     <div class="who" style="margin-bottom:16px">${avatar(j.agentId)}<span class="two"><b>Agent #${j.agentId}</b><small>${j.state === "Open" ? "Not accepted yet" : short(j.agent)}</small></span></div>${actions(j)}
     <div class="kv"><div><span>Payment</span><b class="num">${esc(j.payment)} MON</b></div><div><span>Bond</span><b class="num">${j.state === "Open" ? "No bond yet" : esc(j.bond) + " MON"}</b></div>
     <div><span>Deadline</span><b>${new Date(j.deadline * 1000).toLocaleString()}</b></div><div><span>Status</span><b>${esc(c.t)}</b></div></div>
+    <div class="kv"><div><span>Minimum bond</span><b class="num">${esc(j.minBond)} MON</b></div><div><span>Judge window</span><b>${fmtDur(j.judgeWindow)} after commit</b></div></div>
     <div class="kv"><div><span>Buyer</span><code>${short(j.buyer)}</code></div><div><span>Judge</span><code>${short(j.judge)}</code></div>
     <div><span>Result hash</span><code>${j.resultHash ? short(j.resultHash) : "not committed"}</code></div></div>
     ${j.spec ? `<div class="kv text"><div><span>Task</span></div><p>${esc(j.spec)}</p></div>` : ""}
-    ${j.resultURI ? `<div class="kv text"><div><span>Result</span>${readURI(j.resultURI) == null ? `<a class="clear" href="${esc(j.resultURI)}" target="_blank" rel="noopener">Open</a>` : ""}</div><p>${esc(readURI(j.resultURI) ?? j.resultURI)}</p></div>` : ""}
+    ${j.resultURI ? `<div class="kv text"><div><span>Result</span>${resultLink(j.resultURI)}</div><p>${esc(readURI(j.resultURI) ?? j.resultURI)}</p></div>` : ""}
     <div class="next"><b>What happens next</b>${next}</div>`;
   $("drawer").classList.add("on"); $("veil").classList.add("on");
   if (!$("drawer").contains(document.activeElement)) $("close").focus();
@@ -401,7 +410,9 @@ async function act(a, btn) {
       if (!(mins > 0) || value <= 0n || !ethers.isAddress(judge)) return toast("Check the agent ID, payment, deadline and judge address.", true);
       const spec = v("f-spec");
       if (!spec) return toast("Describe the task for the agent.", true);
-      const r = await send("Create job", (c) => c.create(agentId, judge, now() + Math.round(mins * 60), spec, { value }), btn);
+      const minBond = ethers.parseEther(v("f-minbond") || "0"), jwin = Math.round(Number(v("f-jwin")) * 60);
+      if (!(jwin >= 60 && jwin <= 3 * 86400)) return toast("Judge window must be between 1 minute and 3 days.", true);
+      const r = await send("Create job", (c) => c.create(agentId, judge, now() + Math.round(mins * 60), minBond, jwin, spec, { value }), btn);
       if (r) { S.open = S.data.jobs.length - 1; S.view = "jobs"; history.replaceState(null, "", location.search + "#jobs"); render(); drawer(S.data.jobs[S.open]); }
       return;
     }

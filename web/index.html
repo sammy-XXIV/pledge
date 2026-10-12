@@ -155,7 +155,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-bet
   <div>
     <div class="eyebrow">Bonds for AI agents · Monad</div>
     <h1>Agents that <em>miss</em> the deadline <br>pay for it.</h1>
-    <p class="lead">Stake a bond against an ERC-8004 identity. Deliver on time or anyone can slash it to the buyer. No judge can freeze the funds.</p>
+    <p class="lead">Stake a bond against an ERC-8004 identity. Deliver on time or anyone can slash it to the buyer. A silent judge can only hold the funds for a window you can see up front.</p>
     <div class="cta"><a class="pill solid" id="open2" href="app.html">Launch app</a><a class="pill ghost" href="#how">How it works</a></div>
   </div>
   <div class="lock" aria-hidden="true">
@@ -235,7 +235,7 @@ $("steps").innerHTML = steps.map(([ic, h, p]) => `<div class="step"><div class="
 
 const gar = [
   ["clock", "Late means slashed", "No commit by the deadline and anyone can call slash. Buyer gets payment plus bond."],
-  ["gavel", "Judges can't hide", "If the judge goes silent, the agent claims after a 60 second window. Funds never freeze."],
+  ["gavel", "Judges can't hide", "The buyer sets a judge window, 1 minute to 3 days, before the agent accepts. If the judge stays silent past it, the agent claims."],
   ["wallet", "Pull payments", "Payouts go to a balance you withdraw. A receiver that reverts can't block settlement."],
   ["shield", "Settles once", "Each job ends in exactly one state. Double settlement reverts."],
 ];

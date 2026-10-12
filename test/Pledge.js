@@ -13,7 +13,7 @@ async function setup() {
   await id.connect(agent).register(); // agentId 1
   const pledge = await (await ethers.getContractFactory("Pledge")).deploy(await id.getAddress(), ethers.ZeroAddress);
   const deadline = (await time.latest()) + 100;
-  await pledge.connect(buyer).create(1, judge.address, deadline, "Summarize the Q3 report", { value: PAY });
+  await pledge.connect(buyer).create(1, judge.address, deadline, 0, WINDOW, "Summarize the Q3 report", { value: PAY });
   return { buyer, agent, judge, other, pledge, deadline };
 }
 async function active() {
@@ -80,9 +80,9 @@ describe("Pledge", () => {
   });
 
   it("absent judge cannot hold funds: agent claims after judge window", async () => {
-    const { pledge, agent, deadline } = await loadFixture(committed);
+    const { pledge, agent } = await loadFixture(committed);
     await expect(pledge.connect(agent).claim(0)).to.be.revertedWith("judge window open");
-    await time.increaseTo(deadline + WINDOW + 1);
+    await time.increaseTo((await time.latest()) + WINDOW + 1); // the window runs from the commit
     await pledge.connect(agent).claim(0);
     expect(await pledge.credits(agent.address)).to.equal(PAY + BOND);
   });

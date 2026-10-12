@@ -13,11 +13,14 @@ interface IReputation {
 }
 
 /// Per-job bond for AI agents, keyed to an ERC-8004 identity.
-/// Buyer escrows payment. Agent stakes a bond and must commit a result hash
-/// before the deadline, or anyone can slash it to the buyer. If the judge goes
-/// missing after the deadline, the agent can claim. No party can freeze funds.
-/// Every settlement is also posted to the ERC-8004 Reputation Registry, with this
-/// contract as the client, so agent reputation reflects outcomes it enforced.
+/// Buyer escrows payment and sets a minimum bond, a deadline and a judge window.
+/// Agent stakes a bond and must commit a result hash before the deadline, or anyone
+/// can slash it to the buyer. Once the agent commits, the judge has `judgeWindow`
+/// seconds (chosen by the buyer, 1 minute to 3 days, visible before accepting) to
+/// confirm or reject. After that the agent can claim, so a silent judge can lock
+/// funds for at most that window, whatever the deadline is.
+/// Settlements are posted to the ERC-8004 Reputation Registry with this contract as
+/// the client, except self-dealt jobs where the agent's owner is also buyer or judge.
 contract Pledge {
     enum State { None, Open, Active, Committed, Paid, Slashed, Cancelled }
 
@@ -28,12 +31,16 @@ contract Pledge {
         address agent;
         uint256 payment;
         uint256 bond;
+        uint256 minBond;      // the buyer's floor for the agent's bond
         uint64 deadline;
+        uint32 judgeWindow;   // seconds the judge has after the commit
+        uint64 committedAt;
         bytes32 resultHash;
         State state;
     }
 
-    uint64 public constant JUDGE_WINDOW = 60;
+    uint32 public constant MIN_JUDGE_WINDOW = 60;
+    uint32 public constant MAX_JUDGE_WINDOW = 3 days;
     uint256 public constant REPORT_GAS = 400_000; // first giveFeedback measured at ~296k on Monad testnet
 
     IIdentity public immutable identity;
@@ -45,7 +52,7 @@ contract Pledge {
     mapping(uint256 => string) public specs; // jobId => task, written by the buyer
     mapping(uint256 => string) public resultURIs; // jobId => where the result lives; resultHash proves its content
 
-    event Created(uint256 indexed jobId, address indexed buyer, uint256 indexed agentId, address judge, uint64 deadline, uint256 payment);
+    event Created(uint256 indexed jobId, address indexed buyer, uint256 indexed agentId, address judge, uint64 deadline, uint256 payment, uint256 minBond, uint32 judgeWindow);
     event Accepted(uint256 indexed jobId, address agent, uint256 bond);
     event Committed(uint256 indexed jobId, bytes32 resultHash, string resultURI);
     event Paid(uint256 indexed jobId, uint256 indexed agentId);
@@ -58,13 +65,16 @@ contract Pledge {
         reputation = IReputation(_reputation);
     }
 
-    function create(uint256 agentId, address judge, uint64 deadline, string calldata spec) external payable returns (uint256 jobId) {
+    function create(uint256 agentId, address judge, uint64 deadline, uint256 minBond, uint32 judgeWindow, string calldata spec)
+        external payable returns (uint256 jobId)
+    {
         require(msg.value > 0, "no payment");
         require(deadline > block.timestamp, "bad deadline");
+        require(judgeWindow >= MIN_JUDGE_WINDOW && judgeWindow <= MAX_JUDGE_WINDOW, "bad judge window");
         jobId = jobs.length;
-        jobs.push(Job(msg.sender, judge, agentId, address(0), msg.value, 0, deadline, 0, State.Open));
+        jobs.push(Job(msg.sender, judge, agentId, address(0), msg.value, 0, minBond, deadline, judgeWindow, 0, 0, State.Open));
         specs[jobId] = spec;
-        emit Created(jobId, msg.sender, agentId, judge, deadline, msg.value);
+        emit Created(jobId, msg.sender, agentId, judge, deadline, msg.value, minBond, judgeWindow);
     }
 
     function accept(uint256 jobId) external payable {
@@ -73,6 +83,7 @@ contract Pledge {
         require(block.timestamp < j.deadline, "too late");
         require(identity.ownerOf(j.agentId) == msg.sender, "not agent owner");
         require(msg.value > 0, "no bond");
+        require(msg.value >= j.minBond, "bond too small");
         j.agent = msg.sender;
         j.bond = msg.value;
         j.state = State.Active;
@@ -85,6 +96,7 @@ contract Pledge {
         require(msg.sender == j.agent, "not agent");
         require(block.timestamp <= j.deadline, "too late");
         j.resultHash = resultHash;
+        j.committedAt = uint64(block.timestamp);
         j.state = State.Committed;
         resultURIs[jobId] = resultURI;
         emit Committed(jobId, resultHash, resultURI);
@@ -108,11 +120,11 @@ contract Pledge {
         _slash(jobId, j, "late");
     }
 
-    /// Judge absent: agent collects after the judge window.
+    /// Judge absent: the agent collects once the judge window, counted from the commit, has passed.
     function claim(uint256 jobId) external {
         Job storage j = jobs[jobId];
         require(j.state == State.Committed, "not committed");
-        require(block.timestamp > j.deadline + JUDGE_WINDOW, "judge window open");
+        require(block.timestamp > uint256(j.committedAt) + j.judgeWindow, "judge window open");
         _pay(jobId, j, "judge-silent");
     }
 
@@ -146,17 +158,26 @@ contract Pledge {
     function _pay(uint256 jobId, Job storage j, string memory tag) internal {
         j.state = State.Paid;
         credits[j.agent] += j.payment + j.bond;
-        completed[j.agentId]++;
         emit Paid(jobId, j.agentId);
+        if (_selfDealt(j)) return;
+        completed[j.agentId]++;
         _report(jobId, j, 100, tag);
     }
 
     function _slash(uint256 jobId, Job storage j, string memory tag) internal {
         j.state = State.Slashed;
         credits[j.buyer] += j.payment + j.bond;
-        slashed[j.agentId]++;
         emit Slashed(jobId, j.agentId);
+        if (_selfDealt(j)) return;
+        slashed[j.agentId]++;
         _report(jobId, j, 0, tag);
+    }
+
+    /// The agent's owner is also the buyer or the judge. Money still moves, but the job
+    /// earns no reputation: otherwise one wallet could mint unlimited reviews for itself.
+    /// This does not stop a Sybil using separate wallets; weigh reviews by value at risk.
+    function _selfDealt(Job storage j) internal view returns (bool) {
+        return j.buyer == j.agent || j.judge == j.agent;
     }
 
     /// Settlement is final before this runs; a failing registry can never block it.

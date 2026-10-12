@@ -3,6 +3,7 @@ const { ethers } = require("hardhat");
 const { time, loadFixture } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 
 const PAY = ethers.parseEther("1"), BOND = ethers.parseEther("0.5");
+const WINDOW = 60;
 const HASH = ethers.keccak256(ethers.toUtf8Bytes("result"));
 
 async function setup() {
@@ -12,7 +13,7 @@ async function setup() {
   const rep = await (await ethers.getContractFactory("MockReputation")).deploy();
   const pledge = await (await ethers.getContractFactory("Pledge")).deploy(await id.getAddress(), await rep.getAddress());
   const deadline = (await time.latest()) + 100;
-  await pledge.connect(buyer).create(1, judge.address, deadline, "Summarize the Q3 report", { value: PAY });
+  await pledge.connect(buyer).create(1, judge.address, deadline, 0, WINDOW, "Summarize the Q3 report", { value: PAY });
   await pledge.connect(agent).accept(0, { value: BOND });
   return { buyer, agent, judge, other, pledge, rep, deadline };
 }
@@ -46,8 +47,8 @@ describe("ERC-8004 reputation reporting", () => {
   });
 
   it("claim after a silent judge posts +100 'judge-silent'", async () => {
-    const { pledge, rep, agent, deadline } = await loadFixture(committed);
-    await time.increaseTo(deadline + 61);
+    const { pledge, rep, agent } = await loadFixture(committed);
+    await time.increaseTo((await time.latest()) + WINDOW + 1);
     await pledge.connect(agent).claim(0);
     expect(await fb(rep)).to.deep.include({ value: 100n, tag2: "judge-silent" });
   });
@@ -74,7 +75,7 @@ describe("ERC-8004 reputation reporting", () => {
     const id = await (await ethers.getContractFactory("MockIdentity")).deploy();
     await id.connect(agent).register();
     const pledge = await (await ethers.getContractFactory("Pledge")).deploy(await id.getAddress(), ethers.ZeroAddress);
-    await pledge.connect(buyer).create(1, judge.address, (await time.latest()) + 100, "Summarize the Q3 report", { value: PAY });
+    await pledge.connect(buyer).create(1, judge.address, (await time.latest()) + 100, 0, WINDOW, "Summarize the Q3 report", { value: PAY });
     await pledge.connect(agent).accept(0, { value: BOND });
     await pledge.connect(agent).commit(0, HASH, "data:,summary");
     await expect(pledge.connect(judge).confirm(0)).to.not.emit(pledge, "Reported");
