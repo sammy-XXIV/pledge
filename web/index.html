@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pledge</title>
-<meta name="description" content="Per-job bonds for AI agents on Monad. Deliver on time or the bond is slashed to the buyer.">
+<meta name="description" content="Pledge escrows a payment and an agent bond per job, settles on the block timestamp, and posts every outcome to the ERC-8004 Reputation Registry. Reputation backed by money at risk.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Sora:wght@300;400;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
@@ -16,12 +16,19 @@ nav .wrap{display:flex;align-items:center;justify-content:space-between;height:6
 .links{display:flex;gap:28px;align-items:center}
 .links a.t{text-decoration:none;font-size:14px;color:var(--muted)}
 .links a.t:hover{color:#fff}
-.hero{padding:96px 0 104px}
+.hero{padding:96px 0 72px}
+.proof{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin:0;padding:0;border-top:2px solid var(--line)}
+.proof div{padding:20px 24px 4px 0}
+.proof div+div{padding-left:24px;border-left:2px solid var(--line)}
+.proof dt{font-family:"Bebas Neue",Impact,sans-serif;font-size:40px;line-height:1;color:#fff;margin:0 0 6px;letter-spacing:.02em}
+.proof dd{margin:0;font-size:13px;line-height:1.5;color:var(--muted);max-width:240px}
+@media (max-width:900px){.proof{grid-template-columns:1fr 1fr}.proof div:nth-child(3){border-left:0;padding-left:0}.proof div:nth-child(n+3){border-top:2px solid var(--line);margin-top:20px}}
+@media (max-width:560px){.proof{grid-template-columns:1fr}.proof div,.proof div+div{border-left:0;padding-left:0}.proof div+div{border-top:2px solid var(--line);margin-top:20px}}
 .hero .wrap{display:grid;grid-template-columns:1.2fr .8fr;gap:48px;align-items:center}
 .eyebrow{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--blue);margin-bottom:20px;font-weight:500}
 h1{margin:0 0 20px;font-weight:400;font-size:clamp(52px,7.4vw,104px);line-height:.92;letter-spacing:.01em;text-transform:uppercase}
 h1 em,h2 em{font-style:normal;color:var(--blue)}
-.lead{color:var(--muted);max-width:480px;margin:0 0 28px;font-size:17px}
+.lead{color:var(--muted);max-width:540px;margin:0 0 28px;font-size:17px}
 .cta{display:flex;gap:12px;flex-wrap:wrap}
 .lock{display:grid;place-items:center}
 .lock svg{width:min(260px,80%);height:auto}
@@ -153,9 +160,9 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-bet
 
 <header class="hero" id="top"><div class="wrap">
   <div>
-    <div class="eyebrow">Bonds for AI agents · Monad</div>
-    <h1>Agents that <em>miss</em> the deadline <br>pay for it.</h1>
-    <p class="lead">Stake a bond against an ERC-8004 identity. Deliver on time or anyone can slash it to the buyer. A silent judge can only hold the funds for a window you can see up front.</p>
+    <div class="eyebrow">ERC-8004 · Escrow · Slashing · Monad</div>
+    <h1>Agent reputation,<br><em>backed by a bond.</em></h1>
+    <p class="lead">Pledge escrows a buyer's payment and an agent's bond for every job and settles on the block timestamp. Miss the deadline and anyone can slash the bond to the buyer, with no judge and no admin involved. Every outcome is posted to the ERC-8004 Reputation Registry, so a score reflects money that was actually at risk.</p>
     <div class="cta"><a class="pill solid" id="open2" href="app.html">Launch app</a><a class="pill ghost" href="#how">How it works</a></div>
   </div>
   <div class="lock" aria-hidden="true">
@@ -167,6 +174,13 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-bet
     </svg>
   </div>
 </div></header>
+
+<div class="wrap"><dl class="proof">
+  <div><dt>0 admin keys</dt><dd>No owner, no proxy, no pause. The whole contract is 197 lines.</dd></div>
+  <div><dt>3 days max</dt><dd>The longest a silent judge can lock funds, fixed by the buyer before the agent accepts.</dd></div>
+  <div><dt>100 / 0</dt><dd>Delivered or late, written to the ERC-8004 Reputation Registry by the contract itself.</dd></div>
+  <div><dt>40 tests</dt><dd>Adversarially audited. Four findings reproduced in code and fixed.</dd></div>
+</dl></div>
 
 <section class="s" id="problem"><div class="wrap">
   <div class="tag">The problem</div>
