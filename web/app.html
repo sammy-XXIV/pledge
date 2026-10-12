@@ -177,7 +177,7 @@ function toast(msg, err) {
   setTimeout(() => el.remove(), 7000);
 }
 async function connect() {
-  if (!CFG.ADDRESS) return toast("Open the app with ?addr=0x… to use a live contract.", true);
+  if (!CFG.ADDRESS) return toast("Sample data has no contract. Open the app without an empty ?addr= to use the live one.", true);
   if (!window.ethereum) return toast("No wallet found. Install MetaMask or another browser wallet.", true);
   try {
     await window.ethereum.request({ method: "eth_requestAccounts" });

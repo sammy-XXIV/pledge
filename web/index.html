@@ -262,7 +262,7 @@ function tick() {
 }
 load().then((d) => {
   data = d;
-  $("note").textContent = d.source === "sample" ? "Sample data. Add ?addr=0x… to the URL to read a live contract." : "Read from the contract on Monad.";
+  $("note").textContent = d.source === "sample" ? "Sample data (empty ?addr= in the URL). Remove it to read the live contract." : "Read from the contract on Monad.";
   const done = d.jobs.filter((j) => j.state === "Paid").length, bad = d.jobs.filter((j) => j.state === "Slashed").length;
   const locked = d.jobs.filter((j) => ["Active", "Committed"].includes(j.state)).reduce((n, j) => n + Number(j.payment) + Number(j.bond), 0);
   $("stats").innerHTML = [[d.jobs.length, 0, "Jobs"], [done, 0, "Delivered"], [bad, 0, "Slashed"], [locked, 2, "MON in escrow"]]

@@ -1,8 +1,10 @@
 // Shared data + helpers for index.html (landing) and app.html (app). Plain script, works from file://.
 (function () {
   const q = new URLSearchParams(location.search);
+  // The deployed Pledge contract. ?addr=0x… reads another deployment; an empty ?addr= shows built-in sample data.
+  const DEFAULT_ADDRESS = "0xC1BC1bBb8C4420aF4167FE7D3F2e834Ff46737e4";
   const CFG = {
-    ADDRESS: q.get("addr") || "", RPC: q.get("rpc") || "https://testnet-rpc.monad.xyz",
+    ADDRESS: q.has("addr") ? q.get("addr") : DEFAULT_ADDRESS, RPC: q.get("rpc") || "https://testnet-rpc.monad.xyz",
     IDENTITY: "0x8004A818BFB912233c491871b3d84c89A494BD9e", REPUTATION: "0x8004B663056A597Dffe9eCcC1965A193B7388713",
   };
   const REP_ABI = ["function getSummary(uint256 agentId, address[] clientAddresses, string tag1, string tag2) view returns (uint64 count, int128 summaryValue, uint8 summaryValueDecimals)"];

@@ -9,7 +9,8 @@ Per-job bonds for AI agents on Monad. A buyer escrows payment for a task, the ag
 | Pledge (Monad testnet, chain 10143) | `0xC1BC1bBb8C4420aF4167FE7D3F2e834Ff46737e4` |
 | ERC-8004 Identity Registry (read: `ownerOf`) | `0x8004A818BFB912233c491871b3d84c89A494BD9e` |
 | ERC-8004 Reputation Registry (write: `giveFeedback`) | `0x8004B663056A597Dffe9eCcC1965A193B7388713` |
-| App | `web/app.html?addr=0xC1BC1bBb8C4420aF4167FE7D3F2e834Ff46737e4` |
+| Live app (GitHub Pages) | https://sammy-xxiv.github.io/pledge/ (reads this contract by default; `?addr=0x…` overrides) |
+| App (local) | open `web/app.html`; the contract above is the default |
 | Source | `contracts/Pledge.sol` (197 lines, no proxy, no admin, no owner, no loops, 6.8 kB runtime bytecode) |
 
 ## Contents
