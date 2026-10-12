@@ -1,139 +1,317 @@
 # Pledge
 
-**Late agents pay. Automatically.**
+Per-job bonds for AI agents on Monad. A buyer escrows payment for a task, the agent stakes a bond against its **ERC-8004 identity**, and the contract settles the job by the block timestamp and the judge's call. A late agent is slashed by *anyone*; a silent judge is bounded by a window fixed before the agent accepts. Settlements are posted to the **ERC-8004 Reputation Registry** with the Pledge contract as the client.
 
-Per-job bonds for AI agents on Monad. An agent stakes collateral against its ERC-8004 identity for one job. Deliver before the deadline and it gets paid. Miss it and anyone can slash the bond to the buyer. Outcomes are written to the official ERC-8004 Reputation Registry, so an agent's reputation comes from jobs where money was actually at risk.
-
-> Monad Metropolis · Trust, Identity & AI Infrastructure
+> Monad Metropolis · Track: Trust, Identity & AI Infrastructure
 
 | | |
 | --- | --- |
-| Contract (Monad testnet, chain 10143) | `0xC1BC1bBb8C4420aF4167FE7D3F2e834Ff46737e4` |
-| ERC-8004 Identity Registry (used) | `0x8004A818BFB912233c491871b3d84c89A494BD9e` |
-| ERC-8004 Reputation Registry (written to) | `0x8004B663056A597Dffe9eCcC1965A193B7388713` |
+| Pledge (Monad testnet, chain 10143) | `0xC1BC1bBb8C4420aF4167FE7D3F2e834Ff46737e4` |
+| ERC-8004 Identity Registry (read: `ownerOf`) | `0x8004A818BFB912233c491871b3d84c89A494BD9e` |
+| ERC-8004 Reputation Registry (write: `giveFeedback`) | `0x8004B663056A597Dffe9eCcC1965A193B7388713` |
 | App | `web/app.html?addr=0xC1BC1bBb8C4420aF4167FE7D3F2e834Ff46737e4` |
+| Source | `contracts/Pledge.sol` (197 lines, no proxy, no admin, no owner, no loops, 6.8 kB runtime bytecode) |
 
-## The problem
+## Contents
 
-Agents are starting to take paid work. When one says "done", nothing makes that true: the result can be late, empty or wrong, and the buyer has already paid. Reputation scores don't fix it, because nobody can collect on a number.
+1. [Model](#1-model): actors, state machine, time model
+2. [Contract reference](#2-contract-reference): storage, functions, events
+3. [Accounting and invariants](#3-accounting-and-invariants)
+4. [ERC-8004 integration](#4-erc-8004-integration)
+5. [Security](#5-security): trust model, attack analysis, audit, limitations
+6. [SDK](#6-sdk)
+7. [App and RPC handling](#7-app-and-rpc-handling)
+8. [Tests](#8-tests)
+9. [Reproduce](#9-reproduce)
 
-## How it works
+---
 
-1. **Escrow.** The buyer calls `create(agentId, judge, deadline, minBond, judgeWindow, task)` with the payment. They set the least bond an agent may stake and how long the judge has to decide after a commit.
-2. **Bond.** The owner of that ERC-8004 identity calls `accept(jobId)` with a bond of at least `minBond`. Ownership is checked against the registry on-chain.
-3. **Commit.** Before the deadline the agent calls `commit(jobId, resultHash, resultURI)`. The URI says where the result is; the hash proves its content.
-4. **Settle.** The judge confirms (agent gets payment + bond) or rejects (buyer gets payment + bond).
-5. **Report.** On settlement the contract posts feedback to the ERC-8004 Reputation Registry as the client: `100 / delivered`, `100 / judge-silent`, `0 / late` or `0 / rejected`.
+## 1. Model
 
-## Guarantees
+**Actors.** Buyer (funds the job), Agent owner (`identity.ownerOf(agentId)` at accept time), Judge (an address the buyer names; defaults to the buyer in the SDK), and Anyone (permissionless `slash`).
 
-Each rule is enforced by the contract and covered by a test in `test/`.
+**Idea.** Reputation scores cannot be collected on. Pledge makes the failure cost money: the agent's bond moves to the buyer when the agent is late, and the result of every job is written to the shared reputation registry. Lateness is objective (block timestamp), so it needs no trusted party. Quality is not objective, so it is delegated to the judge and the contract bounds what a judge can do.
 
-- **Late means slashable.** No commit by the deadline and *anyone* can call `slash`. Lateness is judged by the block timestamp, not by a person.
-- **A silent judge can lock funds for at most the job's judge window.** The window (1 minute to 3 days, set by the buyer and visible before an agent accepts) runs from the *commit*, not the deadline. Once it passes the agent can `claim`, however far away the deadline is.
-- **A bond floor the buyer controls.** `accept` reverts below `minBond`.
-- **Self-dealt jobs earn no reputation.** If the agent's owner is also the buyer or the judge, money still moves but the job is not counted and nothing is reported.
-- **The registry can't block settlement.** Funds move before the reputation call, which runs in `try/catch`. If the registry fails, the job still settles and `Reported(jobId, false)` is emitted.
-- **A bad review can't be dodged.** A caller can't send just enough gas to settle while starving the registry call: settlement reverts with `low gas` unless the full reporting budget is available.
-- **Pull payments.** Payouts go to a balance you `withdraw`, so a reverting receiver can't block anything.
-- **Settles once.** Every job ends in exactly one state.
+### State machine
 
-## ERC-8004 integration
-
-- **Identity.** Jobs are addressed to an ERC-8004 `agentId`. Only `ownerOf(agentId)` can accept. The app and SDK register agents with an ERC-8004 registration file (base64 `data:` URI) that declares `supportedTrust: ["reputation", "crypto-economic"]`.
-- **Reputation.** The Pledge contract is the feedback *client*. The registry forbids an agent's owner from rating it, and Pledge skips jobs the owner is part of, so `getSummary(agentId, [PLEDGE], "pledge", "")` reflects jobs run for other people. See Limitations for what that does *not* prevent.
-
-## Put an agent on Pledge (SDK)
-
-```js
-const { Pledge } = require("./sdk/pledge");
-const pledge = new Pledge({ privateKey: process.env.AGENT_KEY });
-
-const agentId = await pledge.registerAgent({ name: "Summarizer", description: "Summarizes text in one line" });
-pledge.serve(agentId, async (job) => summarize(job.spec), { trustedJudges: ["0xYourJudge…"] });
+```mermaid
+stateDiagram-v2
+    [*] --> Open: create (buyer, +payment)
+    Open --> Active: accept (agent owner, +bond ≥ minBond, t < deadline)
+    Open --> Cancelled: cancel (buyer)
+    Active --> Committed: commit (agent, t ≤ deadline)
+    Active --> Slashed: slash (anyone, t > deadline)
+    Committed --> Paid: confirm (judge)
+    Committed --> Slashed: reject (judge)
+    Committed --> Paid: claim (anyone*, t > committedAt + judgeWindow)
 ```
 
-`serve` watches for new jobs addressed to the agent and accepts only the ones that pass its policy:
+`*` `claim` has no caller restriction; credits always go to `job.agent`. Terminal states are `Paid`, `Slashed`, `Cancelled`. Every transition checks the source state, so a job settles exactly once.
 
-- **`trustedJudges` is required.** The buyer picks the judge, and a buyer who is also the judge can reject good work and keep the agent's bond. `serve()` refuses to start without this list (`allowAnyJudge: true` overrides it, unsafely).
-- **Deadline and judge window caps** (`maxDeadlineSec`, default 24 h; `maxJudgeWindowSec`, default 1 h) keep an agent's bond from being tied up for long.
-- It bonds at least the buyer's `minBond` (default 50% of the payment), calls your handler, commits the result, and claims automatically if a judge stays silent past the job's window.
-- One bad job never blocks the ones behind it.
+### Time model
 
-Buyer side: `createJob`, `confirm`, `reject`, `slash`, `withdraw`. Working example: `examples/summarizer-agent.js` (agent, needs `JUDGE=0x…`) and `examples/post-job.js` (buyer).
+Two independent clocks, both compared against `block.timestamp`:
 
-## Judge quick check (5 minutes)
+| Clock | Set by | Governs |
+| --- | --- | --- |
+| `deadline` (absolute) | buyer at `create` | last moment to `accept` (strict `<`) and `commit` (`≤`); `slash` opens at `>` |
+| `judgeWindow` (relative, 60 s to 3 days) | buyer at `create` | how long after `committedAt` the judge may settle before `claim` opens |
 
-```bash
-npm install
-npx hardhat test                       # 40 tests: lifecycle, deadlines, slashing, judge window, bond floor,
-                                       #   self-dealing, ERC-8004 reporting, SDK accept policy
-npx hardhat run scripts/demo.js        # local run: one agent paid, one slashed, early slash blocked
+`commit` (`≤ deadline`) and `slash` (`> deadline`) cannot both succeed at the same timestamp. The judge can still `confirm`/`reject` after the window if the agent has not yet claimed (a race the agent wins by calling `claim` first). A silent judge can therefore lock a committed job for at most `judgeWindow`, independent of `deadline`.
 
-# live, on Monad testnet. PRIVATE_KEY (in .env) owns the agent; BUYER_KEY is a second funded wallet
-PLEDGE=0xC1BC… AGENT_ID=<your id> BUYER_KEY=0x… npx hardhat run scripts/reputation-check.js --network monadTestnet
-#   one delivered and one late job, then reads the ERC-8004 Reputation Registry (100 "delivered", 0 "late")
-PLEDGE=0xC1BC… AGENT_ID=<your id> BUYER_KEY=0x… npx hardhat run scripts/audit-live-check.js --network monadTestnet
-#   bond floor enforced, a 10-year deadline no longer freezes a delivered job, a self-dealt job earns nothing
+---
+
+## 2. Contract reference
+
+### Storage
+
+```solidity
+struct Job {
+    address buyer;       // msg.sender of create
+    address judge;       // may confirm/reject while Committed
+    uint256 agentId;     // ERC-8004 token id
+    address agent;       // set on accept: ownerOf(agentId) at that moment
+    uint256 payment;     // msg.value of create
+    uint256 bond;        // msg.value of accept
+    uint256 minBond;     // buyer's floor for the bond
+    uint64  deadline;
+    uint32  judgeWindow; // seconds
+    uint64  committedAt;
+    bytes32 resultHash;
+    State   state;       // None, Open, Active, Committed, Paid, Slashed, Cancelled
+}
+Job[] public jobs;
+mapping(address => uint256) public credits;      // pull payments
+mapping(uint256 => uint256) public completed;    // agentId => jobs counted as delivered
+mapping(uint256 => uint256) public slashed;      // agentId => jobs counted as failed
+mapping(uint256 => string)  public specs;        // jobId => task text (buyer)
+mapping(uint256 => string)  public resultURIs;   // jobId => result location (agent)
 ```
 
-Then open the app link above, connect a wallet on Monad testnet, and use **Register agent**, **New job**, and the actions in each job's panel.
+`identity` and `reputation` are `immutable`. `reputation == address(0)` disables reporting. `completed` / `slashed` exclude self-dealt jobs (section 4).
 
-## Security review
+### Functions
 
-I audited the contract adversarially after building it (static analysis with Aderyn, hand review, proof-of-concept tests that ran against the code, a gas-limit sweep). Findings and what changed:
+| Function | Caller | Requires | Effect |
+| --- | --- | --- | --- |
+| `create(agentId, judge, deadline, minBond, judgeWindow, spec) payable` | anyone | `msg.value > 0`, `deadline > now`, `60 ≤ judgeWindow ≤ 3 days` | pushes `Job{Open}`, stores `spec` |
+| `accept(jobId) payable` | `ownerOf(agentId)` | `Open`, `now < deadline`, `msg.value > 0`, `msg.value ≥ minBond` | `agent = msg.sender`, `bond = msg.value`, `Active` |
+| `commit(jobId, resultHash, resultURI)` | `job.agent` | `Active`, `now ≤ deadline` | stores hash + URI, `committedAt = now`, `Committed` |
+| `confirm(jobId)` | `job.judge` | `Committed` | `Paid`: `credits[agent] += payment + bond`, report `100` |
+| `reject(jobId)` | `job.judge` | `Committed` | `Slashed`: `credits[buyer] += payment + bond`, report `0` |
+| `slash(jobId)` | anyone | `Active`, `now > deadline` | `Slashed`, report `0 / late` |
+| `claim(jobId)` | anyone | `Committed`, `now > committedAt + judgeWindow` | `Paid`, report `100 / judge-silent` |
+| `cancel(jobId)` | `job.buyer` | `Open` | `Cancelled`: `credits[buyer] += payment` |
+| `withdraw()` | anyone | `credits[msg.sender] > 0` | zero the balance, then `call{value}` |
+
+Approximate gas (Hardhat, with a mock registry; Monad charges the gas limit, not gas used): `create` 214k (stores the task string), `accept` 87k, `commit` 85k, `cancel` 40k, `withdraw` 29k. `confirm`/`reject`/`slash`/`claim` are 140k-390k depending on the registry write (the real registry's first feedback write measured ~296k live).
+
+### Events
+
+```
+Created(jobId, buyer, agentId, judge, deadline, payment, minBond, judgeWindow)
+Accepted(jobId, agent, bond)          Committed(jobId, resultHash, resultURI)
+Paid(jobId, agentId)                  Slashed(jobId, agentId)
+Cancelled(jobId)                      Reported(jobId, ok)
+```
+
+`Reported(jobId, false)` means settlement succeeded but the registry call failed or was skipped by the try/catch; self-dealt jobs emit no `Reported`.
+
+---
+
+## 3. Accounting and invariants
+
+Value only moves through three paths: into the contract at `create`/`accept`, from a job into `credits` at settlement, and out of the contract at `withdraw`.
+
+| Event | `payment` | `bond` |
+| --- | --- | --- |
+| `create` | in | none |
+| `accept` | locked | in |
+| `confirm` / `claim` | → `credits[agent]` | → `credits[agent]` |
+| `reject` / `slash` | → `credits[buyer]` | → `credits[buyer]` |
+| `cancel` (Open only) | → `credits[buyer]` | none |
+
+Invariants (each is exercised by a test or follows from a single-write state machine):
+
+1. `address(this).balance ≥ Σ credits + Σ locked(job)` where `locked` is `payment` for Open, `payment + bond` for Active/Committed. Equality holds except for forced ETH.
+2. A job moves out of a non-terminal state exactly once; credits are added only on the transition.
+3. `withdraw` sets `credits[msg.sender] = 0` before the external call, so a malicious receiver can neither reenter for a second payout nor block anyone else's settlement.
+4. No function iterates over `jobs` or any user-supplied array; every function is O(1).
+5. No admin path: nobody can pause, upgrade, rescue, or change the registries after deployment.
+
+---
+
+## 4. ERC-8004 integration
+
+### Identity (read)
+
+`accept` calls `identity.ownerOf(agentId)` (a `view`, so it cannot reenter). Only the NFT owner may bond an agent. `agent` is the owner **at accept time**; a later transfer of the identity does not move an in-flight job.
+
+### Reputation (write)
+
+On a counted settlement the contract calls:
+
+```solidity
+giveFeedback(
+    agentId,
+    value,           // int128: 100 delivered / judge-silent, 0 late / rejected
+    0,               // valueDecimals
+    "pledge",        // tag1
+    tag,             // tag2: delivered | judge-silent | late | rejected
+    "", "",          // endpoint, feedbackURI
+    keccak256(abi.encode(jobId, resultHash))   // feedbackHash
+)
+```
+
+The call is `reputation.giveFeedback{gas: REPORT_GAS}(...)` inside `try/catch`:
+
+- **Settlement first.** State and `credits` are updated before the external call. A reverting or out-of-gas registry only emits `Reported(jobId, false)`.
+- **Gas floor.** `require(gasleft() > REPORT_GAS + 30_000, "low gas")` runs before the call. Without it a caller could pass just enough gas to settle but starve the registry call, so a late agent could dodge its bad review. A sweep of 48 gas limits (330k-520k) never produced a settled-but-unreported job: 47 reverted, 1 settled and reported. `REPORT_GAS = 400_000`; the first write to a new agent measured ~296k on Monad testnet.
+- **The client is the contract.** The registry rejects feedback from an agent's owner ("Self-feedback not allowed", verified by `eth_estimateGas`), so reviews come from `address(Pledge)` and can be isolated with `getSummary(agentId, [PLEDGE], "pledge", "")`.
+- **Self-dealt jobs are skipped.** If `job.buyer == job.agent` or `job.judge == job.agent`, money moves but the job is neither counted nor reported.
+
+Selectors for `giveFeedback`, `getSummary`, `readFeedback`, `getLastIndex`, `register`, `ownerOf`, `tokenURI`, `setMetadata` were checked directly in the registries' implementation bytecode (EIP-1967 proxies) rather than trusted from documentation. The docs page for Monad lists the mainnet registries; the testnet registries above have code on chain 10143.
+
+### Registration file
+
+The SDK and app register agents with `register(string agentURI)` where `agentURI` is a base64 `data:` URI holding an ERC-8004 registration file (`type`, `name`, `description`, `services`, `active`, `supportedTrust: ["reputation","crypto-economic"]`), as the spec recommends for on-chain storage.
+
+---
+
+## 5. Security
+
+### Trust model
+
+| Property | Who must be trusted |
+| --- | --- |
+| Escrow, bond custody, accept eligibility, deadlines, slashing for lateness, single settlement, bond floor, judge-window bound | nobody (contract) |
+| Whether a delivered result is *good* | the judge the buyer named |
+| Reputation reflects jobs run for other parties | nobody for single-wallet self-dealing; **not** enforced against separate-wallet Sybils |
+
+### Attack analysis
+
+| Vector | Outcome |
+| --- | --- |
+| Reentrancy via `withdraw` or the registry call | Safe: state first, `credits` zeroed before `call`; registry is a fixed address and called after settlement |
+| Insolvency | Invariant 1; no path pays out more than was put in |
+| Front-running `accept` / `slash` | `accept` is owner-gated; `slash` needs only `now > deadline` and pays the buyer, so racing it changes nothing |
+| Boundary races at the deadline | `commit ≤ deadline`, `slash > deadline`: mutually exclusive |
+| Gas starvation of the review | `low gas` floor, see section 4 |
+| Frozen funds | Active: anyone slashes after `deadline`. Committed: bounded by `judgeWindow ≤ 3 days` from the commit |
+| Griefing with huge `spec`/`resultURI` | Costs the caller gas; the SDK loop isolates failing jobs so one cannot block the rest |
+| Malicious `resultURI` in the UI | App renders only http(s) and ipfs links; `javascript:` is shown as text |
+
+### Audit
+
+The contract was audited adversarially after it was written (Aderyn, hand review, proof-of-concept tests, a gas sweep). Four findings were reproduced in code and fixed; two Aderyn "High" results were false positives (`withdraw` zeroes the balance before the call; the flagged `ownerOf` is a `view`). Regression tests: `test/Hardening.js`, `test/Sdk.js`; live proof: `scripts/audit-live-check.js`.
 
 | Finding | Severity | Status |
 | --- | --- | --- |
-| A buyer who is also the judge can reject good work and keep the agent's bond; `serve()` accepted any judge | High for SDK users | **Mitigated in the SDK**: trusted-judge list required. By design in the contract: the judge decides quality. |
-| The judge window started at the deadline, so a far-future deadline plus a silent judge froze payment + bond | Medium-High | **Fixed**: the window runs from the commit and is bounded to 3 days. |
-| One wallet as buyer, agent owner and judge could mint unlimited positive reviews for gas only | Medium | **Fixed** for single-wallet self-dealing; Sybil wallets are a documented limit (below). |
-| Nothing forced a minimum bond; an agent could accept a large job with 1 wei | Medium | **Fixed**: buyer-set `minBond`. |
-| A result URI such as `javascript:…` rendered as a clickable link in the app | Low (did not execute in Chrome) | **Fixed**: only http(s) and ipfs links are rendered. |
-| Gas starvation of the reputation call; reentrancy; insolvency; deadline races | Investigated | No issue: 48-limit gas sweep never settled without reporting; Aderyn's two "High" results are false positives. |
+| Buyer who is also judge can reject good work and keep the bond; `serve()` accepted any judge | High for SDK users | **Mitigated in the SDK** (required trusted-judge list). In the contract the judge deciding quality is the design. |
+| Judge window counted from the deadline, so a far deadline plus a silent judge froze `payment + bond` | Medium-High | **Fixed**: window from commit, buyer-set, 60 s to 3 days |
+| One wallet as buyer, owner and judge minted unlimited positive reviews for gas only | Medium | **Fixed** for single-wallet self-dealing; Sybil limit below |
+| No bond floor: an agent could accept any job with 1 wei | Medium | **Fixed**: `minBond` |
+| `javascript:` result URI rendered as a link | Low (did not execute in Chrome with `noopener`) | **Fixed** |
 
-Two statements in an earlier version of this README were wrong ("a silent judge can't freeze funds", "reputation can't be faked by the agent's owner"). They are corrected above to what the code now guarantees.
+### Limitations
 
-## Trust assumptions
+- **Quality is judged, not proven.** Only delivery and timing are objective. A judge can still reject good work; agents defend with a trusted-judge list.
+- **Separate-wallet Sybil.** Buying from and judging your own agent with a second wallet still yields reviews at the cost of gas only (the money returns). Reviews are not weighted by value at risk; consumers should read the jobs behind the score (`Created`/`Paid` events carry amounts) instead of trusting the average.
+- **Identity NFTs are transferable**, so a reputation can be sold.
+- **Owner-only accept.** ERC-8004 operators and agent wallets cannot accept.
+- **Results live off-contract.** `resultHash` proves content, not availability; the URI may be a `data:` URI, IPFS or HTTPS.
+- **Testnet only; not externally audited.**
 
-Enforced by the contract, no trust needed: escrow, bond custody, deadlines, who may accept, slashing for lateness, the judge window, single settlement, the bond floor, reputation reporting.
+---
 
-Trusted: the **judge** you name decides whether a delivered result is *good*. Pledge makes timing and money trustless, not quality. An agent should only work for judges it trusts, which is why the SDK requires a list.
+## 6. SDK
 
-## Limitations
+`sdk/pledge.js` (CommonJS, ethers v6).
 
-- **Quality is judged, not proven.** Only delivery and timing are objective.
-- **Sybil reputation.** Skipping self-dealt jobs stops one wallet farming itself, but a person with two wallets can still buy and judge their own agent. The only cost is gas, because the money returns. Reviews are not weighted by value at risk, so a consumer of the score should look at the jobs behind it (`Created`/`Paid` events carry the amounts), not just the average.
-- **A transferable identity carries its reputation.** ERC-8004 identities are NFTs; a good record can be sold.
-- **Testnet only** so far. Not externally audited.
-- **Only the identity owner can accept.** ERC-8004 operators and agent wallets are not supported yet.
-- **Results live off the contract.** Small results are stored as `data:` URIs; larger ones should point to IPFS or HTTPS. The hash proves content, not availability.
-- **Reporting costs gas.** Settlement reserves 400k gas for the registry call (measured ~296k on Monad testnet).
-- **The SDK polls** the public RPC, which allows 15 requests per second; reads are paced and retried.
+```js
+const { Pledge } = require("./sdk/pledge");
+const pledge = new Pledge({ privateKey, /* network: "monad-testnet", address, rpc */ });
 
-## Why Monad
-
-- **Fast blocks make short deadlines real.** A 30-second job is enforceable when blocks land in about a second.
-- **Cheap transactions make per-job bonds practical.** Bonding every small job only works if escrow, commit and settle cost almost nothing.
-- **ERC-8004 is live on Monad**, so identity and reputation plug into the shared registries.
-
-## Repository
-
-```
-contracts/Pledge.sol      the contract (MockIdentity / MockReputation are test stand-ins)
-test/                     Pledge.js, Reputation.js, Hardening.js (audit fixes), Sdk.js (accept policy)
-sdk/pledge.js             SDK: registerAgent, serve, createJob, confirm, slash, ...
-examples/                 summarizer agent and buyer script
-web/                      landing page (index.html) and app (app.html)
-scripts/                  deploy, local demo, live reputation and audit checks
+const agentId = await pledge.registerAgent({ name, description, endpoint, image });
+const stop = pledge.serve(agentId, async (job) => runTask(job.spec), { trustedJudges: [judgeAddr] });
 ```
 
-## Run
+| Method | Role | Notes |
+| --- | --- | --- |
+| `registerAgent(info)` | agent | `register(dataURI)`, returns the minted `agentId` from the `Transfer` log |
+| `serve(agentId, handler, opts)` | agent | polling worker; returns `stop()` |
+| `createJob({agentId, spec, payment, minutes, judge, minBond, judgeWindowSec})` | buyer | judge defaults to the signer |
+| `confirm` `reject` `slash` `withdraw` | judge / anyone | thin wrappers |
+| `accept` `commit` `claim` | agent | `commit(id, text, uri?)` hashes `text` with keccak256, embeds it as a `data:` URI unless a URI is given |
+| `job(id)` | read | job struct plus `spec` and `resultURI` |
+
+**`serve` accept policy** (`shouldAccept`, a pure function with its own unit tests):
+
+1. state is `Open` and `deadline > now + 5`;
+2. `deadline - now ≤ maxDeadlineSec` (default 24 h) and `judgeWindow ≤ maxJudgeWindowSec` (default 1 h);
+3. `payment ≥ minPayment`;
+4. `job.judge ∈ trustedJudges` (case-insensitive). **`serve()` throws if `trustedJudges` is empty** unless `allowAnyJudge: true`;
+5. bond is `max(job.minBond, payment × bondRatio)` (default 0.5).
+
+Loop semantics: it starts at the current `jobCount()` (only new jobs), wraps each job in its own `try/catch` and always advances (a poisoned job cannot block later ones), commits only if the handler returns before `deadline`, tracks `committedAt + judgeWindow` per committed job and calls `claim` once a judge stays silent. Reads use a provider subclass that retries JSON-RPC error `-32011` (the public RPC allows 15 requests per second).
+
+---
+
+## 7. App and RPC handling
+
+`web/` is static, with no build step: `index.html` (landing), `app.html` (read and write UI), `shared.js`/`shared.css`.
+
+- **Reads** go straight to the contract with ethers. Job fetches are chunked (5 per 400 ms) and `batchMaxCount: 1`, task and result text are cached because they are write-once, the open job panel re-reads only that job every 2 s, and a full refresh runs every 8 s.
+- **Writes** use any injected EIP-1193 wallet (`window.ethereum`), switch or add chain 10143, and follow `accountsChanged`. Role-based buttons appear only when the connected account can perform the action (owner of the agent can accept, buyer can cancel, judge can confirm or reject, anyone can slash a late job).
+- **Reputation column** is read from the Reputation Registry (`getSummary(agentId, [PLEDGE], "pledge", "")`), not from the contract's own counters.
+- **Safety.** User-controlled text is HTML-escaped; result links are limited to http(s) and ipfs; `data:` results are decoded and shown as text.
+
+---
+
+## 8. Tests
+
+`npx hardhat test` runs 40 tests (Hardhat network, mock identity and reputation contracts, no network access):
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `test/Pledge.js` | 12 | lifecycle, access control, deadline boundaries, judge window, double settlement, pull payments, task/result storage |
+| `test/Reputation.js` | 7 | each outcome's feedback (value, tags, hash), registry failure never blocks settlement, gas-floor revert, reporting disabled |
+| `test/Hardening.js` | 12 | far-future deadline cannot freeze, judge window bounds and race, bond floor, self-dealing matrix (owner as buyer / judge / both, normal, buyer = judge), the by-design judge rejection |
+| `test/Sdk.js` | 9 | accept policy per rule, case-insensitive judge match, `serve()` refuses to start without trusted judges |
+
+---
+
+## 9. Reproduce
 
 ```bash
 npm install
-npx hardhat test
-npx hardhat run scripts/deploy.js --network monadTestnet   # needs PRIVATE_KEY in .env
+npx hardhat test                        # 40 tests
+npx hardhat run scripts/demo.js         # local: paid agent, slashed agent, early slash reverts "not late"
+```
+
+Live on Monad testnet (`.env` holds `PRIVATE_KEY`; `BUYER_KEY` is a second funded wallet, because a job where the owner is also buyer or judge is self-dealt and earns nothing):
+
+```bash
+npx hardhat run scripts/deploy.js --network monadTestnet
+PLEDGE=0xC1BC… AGENT_ID=<id> BUYER_KEY=0x… npx hardhat run scripts/reputation-check.js --network monadTestnet
+#   one delivered and one late job, then reads the registry: feedback 100 "delivered", 0 "late", summary average 50
+PLEDGE=0xC1BC… AGENT_ID=<id> BUYER_KEY=0x… npx hardhat run scripts/audit-live-check.js --network monadTestnet
+#   bond floor enforced; a 10-year deadline no longer freezes a delivered job; a self-dealt job earns nothing
+
+# an agent and a buyer through the SDK
+AGENT_ID=<id> JUDGE=<buyer address> node examples/summarizer-agent.js
+AGENT_ID=<id> BUYER_KEY=0x… node examples/post-job.js "text to summarize"
+```
+
+### Repository
+
+```
+contracts/Pledge.sol        the contract (MockIdentity, MockReputation: test stand-ins)
+sdk/pledge.js               SDK + shouldAccept policy
+examples/                   summarizer agent, buyer script
+scripts/                    deploy, local demo, live reputation + audit checks
+test/                       Pledge, Reputation, Hardening, Sdk
+web/                        landing page and app
 ```
 
 Earlier testnet deployments (`0x43fb…20cc`, `0xcf9E…3301`, `0x5823…Fa74`) predate the audit fixes and are kept only for history.
