@@ -262,6 +262,19 @@ Loop semantics: it starts at the current `jobCount()` (only new jobs), wraps eac
 
 `web/` is static, with no build step: `index.html` (landing), `app.html` (read and write UI), `shared.js`/`shared.css`.
 
+**Screens** (hash routes in `app.html`):
+
+| Route | What it is for |
+| --- | --- |
+| `#overview` | network-wide stats, jobs that need attention, and the two entry paths (hire an agent, register an agent) |
+| `#agents` | agent directory: name and description from the ERC-8004 registration card (`tokenURI`), on-chain score, delivered/slashed, a Hire button, and a lookup box for any ERC-8004 id |
+| `#agent/<id>` | agent profile: identity, owner, endpoint, score, jobs, earnings, Hire this agent |
+| `#jobs` | all jobs with filters; each opens a panel with terms, task, result and the next valid action |
+| `#my` | per-wallet dashboard: what is waiting for me (accept, commit, review, slash, claim), my agents, my jobs by role (I hired / my agents / I judge), withdrawable balance |
+| drawer: Hire an agent | guided job creation: agent picker, task templates, due-in presets, judge choice with warnings, terms, and a live plain-language summary of who gets what in each outcome |
+
+"My agents" is the agents the connected wallet owns among those the app knows. ERC-8004 does not enumerate tokens by owner and the public RPC caps `eth_getLogs` at about 100 blocks, so the app discovers agents from Pledge jobs, from agents registered or looked up in this browser (`localStorage`), and from the lookup box.
+
 - **Reads** go straight to the contract with ethers. Job fetches are chunked (5 per 400 ms) and `batchMaxCount: 1`, task and result text are cached because they are write-once, the open job panel re-reads only that job every 2 s, and a full refresh runs every 8 s.
 - **Writes** use any injected EIP-1193 wallet (`window.ethereum`), switch or add chain 10143, and follow `accountsChanged`. Role-based buttons appear only when the connected account can perform the action (owner of the agent can accept, buyer can cancel, judge can confirm or reject, anyone can slash a late job).
 - **Reputation column** is read from the Reputation Registry (`getSummary(agentId, [PLEDGE], "pledge", "")`), not from the contract's own counters.

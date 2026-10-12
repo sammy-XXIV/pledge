@@ -137,6 +137,50 @@
     return { source: "live", jobs, agents };
   }
 
+  // ---- agents: ERC-8004 identity (owner + registration card) and per-agent stats
+  const IDENT_ABI = ["function ownerOf(uint256) view returns (address)", "function tokenURI(uint256) view returns (string)"];
+  const metaCache = {};
+  const clip = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
+
+  // Parse an agent registration file. Only data: URIs and https/ipfs gateways are read; the card is untrusted text.
+  async function readCard(uri) {
+    let text = null;
+    const d = /^data:([^,]*?)(;base64)?,(.*)$/s.exec(uri || "");
+    if (d) { try { text = d[2] ? decodeURIComponent(escape(atob(d[3]))) : decodeURIComponent(d[3]); } catch { return null; } }
+    else {
+      const url = /^ipfs:\/\//i.test(uri) ? "https://ipfs.io/ipfs/" + uri.slice(7).replace(/^ipfs\//i, "") : /^https:\/\//i.test(uri) ? uri : null;
+      if (!url) return null;
+      try { const c = new AbortController(); setTimeout(() => c.abort(), 3500); text = await (await fetch(url, { signal: c.signal })).text(); } catch { return null; }
+    }
+    try { const card = JSON.parse(text); return card && typeof card === "object" ? card : null; } catch { return null; }
+  }
+
+  /** Owner + card for one agent id. ok=false means the id is not a registered ERC-8004 identity. */
+  async function agentMeta(id, { fresh = false } = {}) {
+    id = Number(id);
+    if (!fresh && metaCache[id]) return metaCache[id];
+    const m = { id, ok: false, owner: "", name: "", description: "", endpoint: "", hasCard: false };
+    const reg = new ethers.Contract(CFG.IDENTITY, IDENT_ABI, provider);
+    try { m.owner = (await reg.ownerOf(id)).toLowerCase(); m.ok = true; } catch { return (metaCache[id] = m); }
+    try {
+      const card = await readCard(await reg.tokenURI(id));
+      if (card) {
+        m.hasCard = true; m.name = clip(card.name, 48); m.description = clip(card.description, 240);
+        const svc = Array.isArray(card.services) ? card.services.find((x) => x && typeof x.endpoint === "string") : null;
+        m.endpoint = svc ? clip(svc.endpoint, 200) : "";
+      }
+    } catch {}
+    return (metaCache[id] = m);
+  }
+
+  /** Pledge counters + the ERC-8004 score Pledge has posted for one agent. */
+  async function agentStats(id) {
+    const c = new ethers.Contract(CFG.ADDRESS, ABI, provider);
+    const a = { id: Number(id), completed: Number(await c.completed(id)), slashed: Number(await c.slashed(id)), score: null };
+    try { const r = new ethers.Contract(CFG.REPUTATION, REP_ABI, provider); const sm = await r.getSummary(id, [CFG.ADDRESS], "pledge", ""); if (sm.count > 0n) a.score = { count: Number(sm.count), value: Number(sm.summaryValue) }; } catch {}
+    return a;
+  }
+
   function countdown(j, now) {
     const left = j.deadline - now;
     if (j.state === "Active") {
@@ -173,5 +217,5 @@
   }
   document.head.insertAdjacentHTML("beforeend", `<link rel="icon" href="data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#000"/><path d="M11 14v-3a5 5 0 0 1 10 0v3" stroke="#2B59FF" stroke-width="2.5" fill="none" stroke-linecap="round"/><rect x="8" y="14" width="16" height="11" rx="3" fill="#2B59FF"/></svg>')}">`);
 
-  window.P = { CFG, STATES, MIN_JUDGE_WINDOW, $, esc, reduce, short, link, avatar, svg, stateIcon, load, loadJob, provider, countdown, ring, seedSpans, countUp, reveal };
+  window.P = { CFG, STATES, MIN_JUDGE_WINDOW, $, esc, reduce, short, link, avatar, svg, stateIcon, load, loadJob, provider, chunked, agentMeta, agentStats, countdown, ring, seedSpans, countUp, reveal };
 })();

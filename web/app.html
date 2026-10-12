@@ -14,6 +14,8 @@ h3,.logo,.pill,.eyebrow,.tag{font-family:Inter,system-ui,sans-serif}
 :root{--glass:rgba(43,89,255,.08);--hair:rgba(255,255,255,.07);--hover:rgba(43,89,255,.16)}
 body{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
 
+[hidden]{display:none!important}
+
 /* sidebar */
 aside.nav{position:sticky;top:0;height:100vh;padding:24px 16px;display:flex;flex-direction:column;gap:32px;background:rgba(0,0,0,.45);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 .logo{font-weight:700;letter-spacing:.08em;font-size:18px}
@@ -22,9 +24,11 @@ aside.nav{position:sticky;top:0;height:100vh;padding:24px 16px;display:flex;flex
 .menu a:hover{color:#fff;background:var(--glass)}
 .menu a.on{color:#fff;background:rgba(43,89,255,.22)}
 .menu a .cnt{margin-left:auto;font-size:12px;color:var(--muted)}
+.menu a .cnt.todo{background:var(--blue);color:#fff;border-radius:999px;padding:0 8px;font-weight:700}
 .net{margin-top:auto;display:grid;gap:8px;font-size:12px;color:var(--muted)}
 .net .src{display:flex;align-items:center;gap:8px;padding:0 4px}
 .net code{color:#fff}
+.net a.lnk{color:var(--blue);padding:0 4px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--blue);flex:none}
 .dot.sample{background:transparent;box-shadow:inset 0 0 0 2px var(--muted)}
 .pill.ghost{justify-content:center;border:0;background:var(--glass);padding:8px 16px}
@@ -33,19 +37,29 @@ aside.nav{position:sticky;top:0;height:100vh;padding:24px 16px;display:flex;flex
 /* main */
 main{padding:32px 40px 80px;min-width:0}
 .page{max-width:1040px}
-.top{margin-bottom:32px}
+.top{margin-bottom:32px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.top .acts{display:flex;gap:8px;flex-wrap:wrap}
 h1{margin:0;font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:clamp(40px,4.4vw,56px);line-height:1;letter-spacing:.02em;text-transform:uppercase;display:flex;align-items:center;gap:16px}
 .tagchip{font:600 11px/1 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);background:var(--glass);border-radius:999px;padding:6px 12px}
-.top p{margin:8px 0 0;color:var(--muted);font-size:14px}
+.top p{margin:8px 0 0;color:var(--muted);font-size:14px;max-width:620px}
 h2{font:600 12px/1 Inter,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:40px 0 16px}
+.crumb{font-size:13px;color:var(--muted);margin-bottom:16px;display:inline-block;text-decoration:none}
+.crumb:hover{color:#fff}
 
 /* surfaces: one panel, hairline dividers, no outlines */
 .panel{background:var(--glass);border-radius:16px;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);overflow:hidden}
 .stats{display:grid;grid-template-columns:repeat(5,1fr)}
+.stats.four{grid-template-columns:repeat(4,1fr)}
 .stat{padding:16px 24px}
 .stat+.stat{border-left:1px solid var(--hair)}
 .stat b{display:block;font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:44px;line-height:1;font-variant-numeric:tabular-nums}
 .stat span{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card2{background:var(--glass);border-radius:16px;padding:24px;display:grid;gap:12px;align-content:start}
+.card2 h3{margin:0;font-size:18px;font-weight:600}
+.card2 p{margin:0;color:var(--muted);font-size:14px;line-height:1.5}
+.banner{border-radius:14px;background:rgba(43,89,255,.18);padding:14px 20px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:14px}
+.banner b{font-weight:600}
 
 .r{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) 150px 200px;gap:16px;align-items:center;width:100%;padding:12px 24px;background:none;border:0;color:inherit;text-align:left;cursor:pointer;font-size:14px}
 .r+.r,.hd+.r{border-top:1px solid var(--hair)}
@@ -53,11 +67,11 @@ h2{font:600 12px/1 Inter,sans-serif;letter-spacing:.16em;text-transform:uppercas
 .r.hd{cursor:default;padding-top:16px;padding-bottom:8px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .r.hd:hover{background:none}
 .r.hd+.r{border-top:0}
-.who{display:flex;align-items:center;gap:16px}
+.who{display:flex;align-items:center;gap:16px;min-width:0}
 .who .av{width:32px;height:32px;border-radius:8px}
-.two{display:flex;flex-direction:column;line-height:1.3}
+.two{display:flex;flex-direction:column;line-height:1.3;min-width:0}
 .two b{font-weight:500}
-.two small{font-size:12px;color:var(--muted)}
+.two small{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .amt b{font-variant-numeric:tabular-nums}
 .due{justify-self:end;text-align:right;color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
 .sd{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:#fff}
@@ -69,6 +83,7 @@ h2{font:600 12px/1 Inter,sans-serif;letter-spacing:.16em;text-transform:uppercas
 .sd.s-Open i,.sd.s-Cancelled i{background:var(--muted)}
 .flag{display:inline-block}
 .empty{padding:32px 24px;color:var(--muted);font-size:14px}
+.note-r{font-size:12px;color:var(--muted);padding:12px 24px;border-top:1px solid var(--hair)}
 
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
 .chip{border:0;border-radius:999px;background:var(--glass);padding:8px 16px;font-size:13px;cursor:pointer;color:var(--muted)}
@@ -77,19 +92,39 @@ h2{font:600 12px/1 Inter,sans-serif;letter-spacing:.16em;text-transform:uppercas
 .clear{color:var(--blue)}
 
 /* agents */
-.ag{grid-template-columns:minmax(0,1.5fr) 90px 90px 150px minmax(0,1fr)}
-.kv.text{padding-bottom:4px}.kv.text p{margin:0;padding:0 16px 12px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
-.field textarea{background:#000;border:1px solid var(--hair);border-radius:10px;padding:10px 12px;color:#fff;font:500 14px/1.4 Inter,sans-serif;width:100%;box-sizing:border-box;resize:vertical}
-.field textarea:focus{outline:2px solid var(--blue);border-color:transparent}
+.ag{grid-template-columns:minmax(0,1.7fr) 130px 110px minmax(0,.8fr) 90px}
 .ag .n{font-family:"Bebas Neue",Impact,sans-serif;font-size:28px;line-height:1}
+.ag .sc b{font-family:"Bebas Neue",Impact,sans-serif;font-size:28px;font-weight:400;line-height:1}
 .bar{height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;display:flex}
 .bar i{display:block;height:100%}
 .bar .ok{background:var(--blue)}.bar .no{background:#fff}
+.find{display:flex;gap:8px;margin-bottom:16px;max-width:520px}
+.find input{flex:1;background:var(--glass);border:0;border-radius:12px;padding:10px 14px;color:#fff;font:500 14px Inter,sans-serif}
+.find input:focus{outline:2px solid var(--blue)}
+.mine-tag{font:700 10px/1 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;background:var(--blue);color:#fff;border-radius:999px;padding:3px 8px;margin-left:8px;vertical-align:middle}
+
+/* agent profile */
+.prof{display:flex;gap:24px;align-items:center;margin-bottom:32px;flex-wrap:wrap}
+.prof .av{width:72px;height:72px;border-radius:18px}
+.prof .info{flex:1;min-width:240px}
+.prof h1{font-size:clamp(36px,4vw,52px)}
+.prof .desc{margin:8px 0 0;color:var(--muted);font-size:15px;line-height:1.5;max-width:640px}
+.prof .meta{margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.prof .meta code{color:#fff}
+.score-big b{font-size:44px}
+
+/* my activity + todo rows */
+.todo{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;padding:14px 24px}
+.todo+.todo{border-top:1px solid var(--hair)}
+.todo .tx{display:grid;gap:2px;min-width:0}
+.todo .tx b{font-weight:500;font-size:14px}
+.todo .tx small{color:var(--muted);font-size:12px}
 
 /* drawer */
+.kv.text{padding-bottom:4px}.kv.text p{margin:0;padding:0 16px 12px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
 #veil{position:fixed;inset:0;background:rgba(0,0,0,.7);opacity:0;pointer-events:none;z-index:20}
 #veil.on{opacity:1;pointer-events:auto}
-#drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:rgba(5,7,13,.85);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);transform:translateX(100%);z-index:21;overflow-y:auto;padding:32px 24px}
+#drawer{position:fixed;top:0;right:0;bottom:0;width:min(460px,100%);background:rgba(5,7,13,.88);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);transform:translateX(100%);z-index:21;overflow-y:auto;padding:32px 24px}
 #drawer.on{transform:none}
 .dhead{display:flex;align-items:center;gap:16px;margin-bottom:24px}
 .dhead h3{margin:0;font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:36px;letter-spacing:.02em;text-transform:uppercase;margin-right:auto;line-height:1}
@@ -104,20 +139,32 @@ h2{font:600 12px/1 Inter,sans-serif;letter-spacing:.16em;text-transform:uppercas
 .next b{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#fff;margin-bottom:8px;font-weight:600}
 .next code{display:block;margin-top:8px;padding:8px 12px;border-radius:8px;background:#000;color:#fff}
 .chip:focus-visible,.r:focus-visible,.menu a:focus-visible,.x:focus-visible,.btn:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
-.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:12px;background:var(--blue);color:#fff;padding:10px 16px;font:600 14px Inter,sans-serif;cursor:pointer}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:12px;background:var(--blue);color:#fff;padding:10px 16px;font:600 14px Inter,sans-serif;cursor:pointer;text-decoration:none}
 .btn:hover{background:#fff;color:#000}
 .btn.ghost{background:var(--glass);color:#fff}.btn.ghost:hover{background:var(--hover)}
+.btn.sm{padding:6px 12px;font-size:13px}
 .btn:disabled{opacity:.5;cursor:wait}
 .act{display:grid;gap:12px;margin:0 0 16px;background:var(--glass);border-radius:14px;padding:16px}
 .act .h{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:600}
 .field{display:grid;gap:6px;font-size:12px;color:var(--muted)}
-.field input{background:#000;border:1px solid var(--hair);border-radius:10px;padding:10px 12px;color:#fff;font:500 14px Inter,sans-serif;width:100%;box-sizing:border-box}
-.field input:focus{outline:2px solid var(--blue);border-color:transparent}
+.field input,.field select,.field textarea{background:#000;border:1px solid var(--hair);border-radius:10px;padding:10px 12px;color:#fff;font:500 14px/1.4 Inter,sans-serif;width:100%;box-sizing:border-box}
+.field textarea{resize:vertical}
+.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--blue);border-color:transparent}
+.field small{color:var(--muted);font-size:12px;line-height:1.4}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.radios{display:grid;gap:8px}
+.radios label{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:#fff;background:#000;border-radius:10px;padding:10px 12px;cursor:pointer}
+.radios input{margin-top:3px;accent-color:#2B59FF;width:auto;padding:0;border:0;background:none;flex:none}
+.radios small{display:block;color:var(--muted);font-size:12px;font-weight:400}
+.tpls{display:flex;gap:8px;flex-wrap:wrap}
+.sum{border-radius:14px;padding:14px 16px;background:rgba(43,89,255,.18);font-size:13px;line-height:1.55;display:grid;gap:6px}
+.sum b{font-weight:600}
+.sum .warn{color:#fff;background:#000;border-radius:8px;padding:8px 10px}
+details.adv{background:var(--glass);border-radius:14px;padding:12px 16px}
+details.adv summary{cursor:pointer;font-size:13px;color:var(--muted)}
+details.adv .act{margin:12px 0 0;padding:0;background:none}
 .net .btn{width:100%}
 #toast{position:fixed;left:256px;bottom:24px;z-index:40;display:grid;gap:8px;width:min(400px,calc(100% - 280px));pointer-events:none}
-@media (max-width:900px){#toast{left:16px;width:calc(100% - 32px)}}
 .toast{background:rgba(5,7,13,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-radius:12px;padding:12px 16px;font-size:13px;box-shadow:inset 3px 0 0 var(--blue)}
 .toast.err{box-shadow:inset 3px 0 0 #fff}
 .toast code{color:var(--blue)}
@@ -125,13 +172,17 @@ h2{font:600 12px/1 Inter,sans-serif;letter-spacing:.16em;text-transform:uppercas
 @media (max-width:900px){
   body{grid-template-columns:1fr}
   aside.nav{position:static;height:auto;flex-direction:row;align-items:center;gap:16px;padding:16px}
-  .menu{display:flex;flex:1;overflow-x:auto}.menu a .cnt{display:none}.net{display:none}
+  .menu{display:flex;flex:1;overflow-x:auto}.menu a .cnt{display:none}.menu a .cnt.todo{display:inline}.net{display:none}
   main{padding:24px 16px 64px}
-  .stats{grid-template-columns:repeat(2,1fr)}.stat:nth-child(odd){border-left:0}.stat:nth-child(n+3){border-top:1px solid var(--hair)}
+  #toast{left:16px;width:calc(100% - 32px)}
+  .stats,.stats.four{grid-template-columns:repeat(2,1fr)}.stat:nth-child(odd){border-left:0}.stat:nth-child(n+3){border-top:1px solid var(--hair)}
+  .cards{grid-template-columns:1fr}
   .r{grid-template-columns:1fr auto;grid-template-areas:"w s" "a d";row-gap:8px}
   .r>:nth-child(1){grid-area:w}.r>:nth-child(2){grid-area:a}.r>:nth-child(3){grid-area:s;justify-self:end}.r>:nth-child(4){grid-area:d}
   .r.hd{display:none}
-  .ag{grid-template-columns:1fr 1fr;grid-template-areas:"w w" "a b" "c c"}
+  .ag{grid-template-columns:1fr auto;grid-template-areas:"w h" "s s2";row-gap:8px}
+  .ag>:nth-child(1){grid-area:w}.ag>:nth-child(2){grid-area:s}.ag>:nth-child(3){grid-area:s2;justify-self:end}.ag>:nth-child(4){display:none}.ag>:nth-child(5){grid-area:h}
+  .todo{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -143,20 +194,25 @@ h2{font:600 12px/1 Inter,sans-serif;letter-spacing:.16em;text-transform:uppercas
 </aside>
 <main><div class="page" id="view"></div></main>
 <div id="veil"></div>
-<aside id="drawer" aria-label="Job details"></aside>
+<aside id="drawer" aria-label="Details"></aside>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script src="shared.js"></script>
 <script>
 const { $, load, avatar, svg, countdown, seedSpans, link, short, CFG, esc } = P;
 $("home").href = link("index.html");
-const S = { data: { jobs: [], agents: [], source: "sample" }, view: "overview", filter: "all", agent: null, open: null };
-const TABS = [["overview", "Overview", "grid"], ["jobs", "Jobs", "list"], ["agents", "Agents", "users"]];
+const S = { data: { jobs: [], agents: [], source: "sample" }, view: "overview", param: null, filter: "all", role: "buyer",
+            open: null, sig: "", meta: {}, stats: {}, extra: [], mine: [], hireAgent: null };
+const TABS = [["overview", "Overview", "grid"], ["agents", "Agents", "users"], ["jobs", "Jobs", "list"], ["my", "My activity", "wallet"]];
 const now = () => Math.floor(Date.now() / 1000);
 const isLate = (j) => j.state === "Active" && j.deadline < now();
 const canClaim = (j) => j.state === "Committed" && now() > j.committedAt + j.judgeWindow;
 const needsAttn = (j) => isLate(j) || canClaim(j);
 const sample = () => S.data.source === "sample";
+const num = (x) => Number(x);
+const fmtMon = (v) => { const n = Number(v); return n === 0 ? "0" : n < 0.000001 ? "<0.000001" : n >= 1 ? n.toFixed(2).replace(/\.?0+$/, "") : String(+n.toPrecision(3)); };
+const fmtDur = (s) => (s % 86400 === 0 ? `${s / 86400} d` : s % 3600 === 0 ? `${s / 3600} h` : s % 60 === 0 ? `${s / 60} min` : `${s} s`);
+const ckAddr = (a) => { try { return ethers.getAddress(a); } catch { return a; } };
 
 // ---- wallet + contract writes (any injected EIP-1193 wallet, e.g. MetaMask)
 const WRITE_ABI = [
@@ -164,11 +220,11 @@ const WRITE_ABI = [
   "function accept(uint256 jobId) payable", "function commit(uint256 jobId, bytes32 resultHash, string resultURI)",
   "function confirm(uint256 jobId)", "function reject(uint256 jobId)", "function slash(uint256 jobId)",
   "function claim(uint256 jobId)", "function cancel(uint256 jobId)", "function withdraw()",
-  "function credits(address) view returns (uint256)", "function identity() view returns (address)",
+  "function credits(address) view returns (uint256)",
 ];
 const MONAD = { chainId: "0x279f", chainName: "Monad Testnet", nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 }, rpcUrls: [CFG.RPC] };
 const RP = P.provider; // shared, rate-limit aware
-const W = { addr: null, signer: null, credit: 0n, owners: {}, idAddr: null };
+const W = { addr: null, signer: null, credit: 0n, bal: null };
 const me = (a) => !!(W.addr && a && a.toLowerCase() === W.addr);
 
 function toast(msg, err) {
@@ -176,6 +232,11 @@ function toast(msg, err) {
   const box = $("toast"); box.appendChild(el); while (box.children.length > 3) box.firstChild.remove();
   setTimeout(() => el.remove(), 7000);
 }
+// agents the user registered or added from this browser (ERC-8004 has no owner enumeration and the RPC caps log ranges)
+const lsKey = () => "pledge.agents." + W.addr;
+function loadMine() { try { S.mine = JSON.parse(localStorage.getItem(lsKey()) || "[]").map(num).filter(Number.isFinite); } catch { S.mine = []; } }
+function saveMine(id) { if (!S.mine.includes(id)) S.mine.push(id); try { localStorage.setItem(lsKey(), JSON.stringify(S.mine)); } catch {} }
+
 async function connect() {
   if (!CFG.ADDRESS) return toast("Sample data has no contract. Open the app without an empty ?addr= to use the live one.", true);
   if (!window.ethereum) return toast("No wallet found. Install MetaMask or another browser wallet.", true);
@@ -187,7 +248,8 @@ async function connect() {
     }
     W.signer = await new ethers.BrowserProvider(window.ethereum).getSigner();
     W.addr = (await W.signer.getAddress()).toLowerCase();
-    toast(`Wallet connected <code>${short(ethers.getAddress(W.addr))}</code>`);
+    loadMine();
+    toast(`Wallet connected <code>${short(ckAddr(W.addr))}</code>`);
     await refresh();
   } catch (e) { toast("Connect failed: " + esc(e.shortMessage || e.message), true); }
 }
@@ -196,11 +258,22 @@ async function refresh() {
   if (W.addr) {
     const c = new ethers.Contract(CFG.ADDRESS, WRITE_ABI, RP);
     W.credit = await c.credits(W.addr);
-    W.idAddr = W.idAddr || (await c.identity());
-    const reg = new ethers.Contract(W.idAddr, ["function ownerOf(uint256) view returns (address)"], RP);
-    for (const j of S.data.jobs) if (j.state === "Open" && !(j.agentId in W.owners)) W.owners[j.agentId] = (await reg.ownerOf(j.agentId)).toLowerCase();
+    W.bal = Number(ethers.formatEther(await RP.getBalance(W.addr)));
   }
   render();
+  ensureMeta(); // agent names, owners and scores arrive without blocking the page
+}
+let metaBusy = false;
+function universe() { return [...new Set([...S.data.agents.map((a) => a.id), ...S.mine, ...S.extra])]; }
+async function ensureMeta() {
+  if (metaBusy || sample()) return; metaBusy = true;
+  try {
+    const need = universe().filter((id) => !S.meta[id]);
+    await P.chunked(need.map((id) => async () => { S.meta[id] = await P.agentMeta(id); }), 3);
+    const noStats = universe().filter((id) => !S.data.agents.some((a) => a.id === id) && !S.stats[id]);
+    await P.chunked(noStats.map((id) => async () => { S.stats[id] = await P.agentStats(id); }), 2);
+    if (need.length || noStats.length) render();
+  } catch {} finally { metaBusy = false; }
 }
 async function send(label, fn, btn) {
   if (!W.signer) return connect();
@@ -216,13 +289,50 @@ async function send(label, fn, btn) {
     return r;
   } catch (e) { toast(`${label} failed: ${esc(e.shortMessage || e.reason || e.message)}`, true); if (btn) btn.disabled = false; }
 }
+
+// ---- agents
+function agentInfo(id) {
+  const m = S.meta[id] || {}, base = S.data.agents.find((a) => a.id === id) || S.stats[id] || { completed: 0, slashed: 0, score: null };
+  const jobs = S.data.jobs.filter((j) => j.agentId === id);
+  return {
+    id, name: m.name || `Agent #${id}`, description: m.description || "", owner: m.owner || "", endpoint: m.endpoint || "",
+    exists: m.ok !== false, loaded: !!S.meta[id], completed: base.completed, slashed: base.slashed, score: base.score, jobs,
+    volume: jobs.filter((j) => j.state === "Paid").reduce((n, j) => n + Number(j.payment), 0), mine: me(m.owner),
+  };
+}
+const ownedIds = () => (W.addr ? universe().filter((id) => me(S.meta[id]?.owner)) : []);
+const scoreTxt = (a) => (a.score ? `${a.score.value} / 100` : "—");
+const scoreSub = (a) => (a.score ? `${a.score.count} review${a.score.count === 1 ? "" : "s"} by Pledge` : "no reviews yet");
+
+// ---- what needs the connected wallet to act
+function todos() {
+  if (!W.addr || sample()) return [];
+  const out = [], t = now();
+  for (const j of S.data.jobs) {
+    const owner = S.meta[j.agentId]?.owner;
+    if (j.state === "Open" && j.deadline > t && me(owner)) out.push({ j, cta: "Accept", text: "A buyer is waiting for your agent to accept this job" });
+    if (j.state === "Active" && me(j.agent) && !isLate(j)) out.push({ j, cta: "Commit", text: "Do the work and commit the result before the deadline" });
+    if (isLate(j) && me(j.buyer)) out.push({ j, cta: "Slash", text: "The agent missed its deadline: take back your payment plus its bond" });
+    if (j.state === "Committed" && me(j.judge) && !canClaim(j)) out.push({ j, cta: "Review", text: "A result is waiting for your confirm or reject" });
+    if (canClaim(j) && me(j.agent)) out.push({ j, cta: "Claim", text: "The judge did not answer in time: claim payment plus your bond" });
+  }
+  return out;
+}
+
+// ---- job actions (drawer)
 function actions(j) {
   if (!CFG.ADDRESS) return "";
   if (!W.addr) return '<div class="act"><span class="h">Take action</span><button class="btn" data-act="connect">Connect wallet</button></div>';
-  const out = [];
+  const out = [], owner = S.meta[j.agentId]?.owner;
   if (j.state === "Open") {
-    if (W.owners[j.agentId] === W.addr) out.push(`<label class="field">Bond (MON), at least ${esc(j.minBond)}<input id="f-bond" value="${Math.max(Number(j.minBond), Number(j.payment) / 2)}"></label><button class="btn" data-act="accept">Accept with bond</button>`);
-    if (me(j.buyer)) out.push('<button class="btn ghost" data-act="cancel">Cancel job</button>');
+    if (me(owner)) {
+      const notes = [];
+      if (j.buyer.toLowerCase() === j.judge.toLowerCase()) notes.push("The buyer is also the judge, so they alone decide whether your work counts. Only accept jobs from buyers you trust.");
+      if (j.deadline - now() > 86400) notes.push("The deadline is more than a day away; your bond stays locked until you commit.");
+      if (me(j.buyer) || me(j.judge)) notes.push("You own this agent and are also the buyer or judge, so this job will not count toward its reputation.");
+      out.push(`<label class="field">Bond (MON), at least ${esc(j.minBond)}<input id="f-bond" value="${Math.max(Number(j.minBond), Number(j.payment) / 2)}"></label>${notes.map((n) => `<div class="sum"><span class="warn">${esc(n)}</span></div>`).join("")}<button class="btn" data-act="accept">Accept with bond</button>`);
+    }
+    if (me(j.buyer)) out.push('<button class="btn ghost" data-act="cancel">Cancel job and get a refund</button>');
   } else if (isLate(j)) out.push('<button class="btn" data-act="slash">Slash bond to buyer</button>');
   else if (j.state === "Active" && me(j.agent)) out.push('<label class="field">Result<textarea id="f-result" rows="3">Done: see summary.</textarea></label><button class="btn" data-act="commit">Commit result</button>');
   if (j.state === "Committed" && me(j.judge)) out.push('<div class="row2"><button class="btn" data-act="confirm">Confirm, pay agent</button><button class="btn ghost" data-act="reject">Reject, slash</button></div>');
@@ -230,7 +340,6 @@ function actions(j) {
   return out.length ? `<div class="act"><span class="h">Take action</span>${out.join("")}</div>` : "";
 }
 const dataURI = (text) => "data:text/plain;base64," + btoa(unescape(encodeURIComponent(text)));
-const fmtDur = (s) => (s % 86400 === 0 ? `${s / 86400} d` : s % 3600 === 0 ? `${s / 3600} h` : s % 60 === 0 ? `${s / 60} min` : `${s} s`);
 // A result URI is attacker-controlled: only ever link http(s) and ipfs, never javascript: or other schemes.
 function safeHref(uri) {
   if (/^ipfs:\/\//i.test(uri)) return "https://ipfs.io/ipfs/" + uri.slice(7).replace(/^ipfs\//i, "");
@@ -241,6 +350,8 @@ function readURI(uri) { // inline data: URIs are shown as text; anything else is
   const m = /^data:([^,]*?)(;base64)?,(.*)$/s.exec(uri || ""); if (!m) return null;
   try { return m[2] ? decodeURIComponent(escape(atob(m[3]))) : decodeURIComponent(m[3]); } catch { return null; }
 }
+
+// ---- register an agent
 const IDENTITY_ABI = ["function register(string agentURI) returns (uint256 agentId)", "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)"];
 function agentCard(name, description, endpoint) { // ERC-8004 registration file, stored on-chain as a base64 data URI
   const card = { type: "https://eips.ethereum.org/EIPS/eip-8004#registration-v1", name, description, image: "",
@@ -249,33 +360,88 @@ function agentCard(name, description, endpoint) { // ERC-8004 registration file,
 }
 function newAgentForm() {
   $("drawer").innerHTML = `<div class="dhead"><h3>Register agent</h3><button class="x" id="close" aria-label="Close">${svg("x")}</button></div>
-    <p class="k" style="margin:0 0 8px;font-size:14px">Mints an ERC-8004 identity for your agent. Its Pledge outcomes are posted to the ERC-8004 Reputation Registry.</p>
+    <p class="k" style="margin:0 0 16px;font-size:14px;line-height:1.5">Mints an ERC-8004 identity for your agent. Buyers can then hire it here, and every job it finishes or fails is posted to the ERC-8004 Reputation Registry.</p>
     <div class="act">
-      <label class="field">Name<input id="f-name" value="Summarizer"></label>
-      <label class="field">Description<textarea id="f-desc" rows="2">Summarizes any text in one line.</textarea></label>
+      <label class="field">Name<input id="f-name" value="Summarizer" maxlength="48"></label>
+      <label class="field">What it does<textarea id="f-desc" rows="2" maxlength="240">Summarizes any text in one line.</textarea></label>
       <label class="field">Endpoint (optional)<input id="f-endpoint" placeholder="https://…"></label>
       <button class="btn" data-act="register">Register on ERC-8004</button>
-    </div>
-    <div class="next" style="margin-top:16px"><b>Running it</b>Point the Pledge SDK at your agent ID: <code>pledge.serve(agentId, handler)</code></div>`;
-}
-function newJobForm() {
-  $("drawer").innerHTML = `<div class="dhead"><h3>New job</h3><button class="x" id="close" aria-label="Close">${svg("x")}</button></div>
-    <p class="k" style="margin:0 0 8px;font-size:14px">Escrow a payment for an agent. If it misses the deadline, its bond comes to you.</p>
-    <div class="act">
-      <label class="field">Agent ID (ERC-8004)<input id="f-agent" inputmode="numeric" value="${S.newAgent ?? S.data.agents[0]?.id ?? ""}"></label>
-      <label class="field">Task<textarea id="f-spec" rows="3" placeholder="What should the agent do?">Summarize this in one line: Pledge lets AI agents stake a bond on every job they accept.</textarea></label>
-      <div class="row2"><label class="field">Payment (MON)<input id="f-pay" value="0.01"></label><label class="field">Deadline (minutes)<input id="f-min" value="5"></label></div>
-      <div class="row2"><label class="field">Minimum bond (MON)<input id="f-minbond" value="0.005"></label><label class="field">Judge window (minutes)<input id="f-jwin" value="60"></label></div>
-      <label class="field">Judge<input id="f-judge" value="${W.addr || ""}" placeholder="0x…"></label>
-      <button class="btn" data-act="create">Escrow payment</button>
     </div>`;
 }
 
+// ---- hire an agent (guided job creation)
+const TEMPLATES = [
+  ["Summarize", "Summarize this in one line: Pledge lets AI agents stake a bond on every job they accept."],
+  ["Research brief", "Write a five-bullet brief on the main risks of using an unaudited smart contract."],
+  ["Code review", "Review this function for bugs and list each issue with a one-line fix."],
+];
+const DEADLINES = [[5, "5 minutes"], [15, "15 minutes"], [60, "1 hour"], [1440, "1 day"]];
+const WINDOWS = [[10, "10 minutes"], [60, "1 hour"], [1440, "1 day"], [4320, "3 days"]];
+function hireForm() {
+  const ids = universe(), sel = S.hireAgent != null ? String(S.hireAgent) : ids.length ? String(ids[0]) : "other";
+  const opts = ids.map((id) => { const a = agentInfo(id); return `<option value="${id}" ${String(id) === sel ? "selected" : ""}>${esc(a.name)} (#${id}${a.score ? ", " + a.score.value + "/100" : ""})</option>`; }).join("");
+  $("drawer").innerHTML = `<div class="dhead"><h3>Hire an agent</h3><button class="x" id="close" aria-label="Close">${svg("x")}</button></div>
+    <p class="k" style="margin:0 0 16px;font-size:14px;line-height:1.5">Your payment is held by the contract. The agent must stake its own bond before it can start. If it is late, you get both back.</p>
+    <div class="act">
+      <label class="field">Agent<select id="f-agent-sel">${opts}<option value="other" ${sel === "other" ? "selected" : ""}>Another ERC-8004 agent ID…</option></select></label>
+      <label class="field" id="f-other" ${sel === "other" ? "" : "hidden"}>Agent ID<input id="f-agent" inputmode="numeric" placeholder="e.g. 2132"></label>
+      <label class="field">Task<textarea id="f-spec" rows="3" placeholder="What should the agent do?">${esc(TEMPLATES[0][1])}</textarea></label>
+      <div class="tpls">${TEMPLATES.map((t, i) => `<button class="chip" type="button" data-tpl="${i}">${t[0]}</button>`).join("")}</div>
+      <div class="row2">
+        <label class="field">Payment (MON)<input id="f-pay" value="0.01"></label>
+        <label class="field">Due in<select id="f-dl">${DEADLINES.map(([m, l]) => `<option value="${m}" ${m === 15 ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+      </div>
+      <div class="field">Who judges the result?
+        <div class="radios">
+          <label><input type="radio" name="judge" value="me" checked><span>Me<small>You review the result and confirm or reject it.</small></span></label>
+          <label><input type="radio" name="judge" value="other"><span>Someone else<small>Anyone you trust. They alone decide if the work is good.</small></span></label>
+        </div>
+      </div>
+      <label class="field" id="f-judge-wrap" hidden>Judge address<input id="f-judge" placeholder="0x…"></label>
+      <details class="adv"><summary>Terms (defaults are sensible)</summary>
+        <div class="act">
+          <label class="field">Minimum bond the agent must stake (MON)<input id="f-minbond" value="0.005"><small>Auto-set to half the payment until you change it.</small></label>
+          <label class="field">Time you have to judge after it delivers<select id="f-jwin">${WINDOWS.map(([m, l]) => `<option value="${m}" ${m === 60 ? "selected" : ""}>${l}</option>`).join("")}</select><small>If you stay silent longer, the agent can claim the payment.</small></label>
+        </div>
+      </details>
+      <div class="sum" id="hire-sum"></div>
+      <button class="btn" data-act="create" id="hire-go">Escrow payment</button>
+    </div>`;
+  updateHire();
+}
+function hireValues() {
+  const v = (id) => ($(id)?.value || "").trim(), selv = v("f-agent-sel");
+  const agentId = selv === "other" ? v("f-agent") : selv, judgeMe = ($("drawer").querySelector("input[name=judge]:checked")?.value || "me") === "me";
+  return { agentId, spec: v("f-spec"), pay: v("f-pay"), mins: Number(v("f-dl")), minBond: v("f-minbond"), jwin: Number(v("f-jwin")), judge: judgeMe ? (W.addr ? ckAddr(W.addr) : "") : v("f-judge"), judgeMe };
+}
+function updateHire() {
+  const h = hireValues(), sumEl = $("hire-sum"); if (!sumEl) return;
+  $("f-other").hidden = $("f-agent-sel").value !== "other";
+  $("f-judge-wrap").hidden = h.judgeMe;
+  const pay = Number(h.pay), mb = Number(h.minBond);
+  if ($("f-minbond") && !$("f-minbond").dataset.touched && pay > 0) $("f-minbond").value = fmtMon(pay / 2);
+  const notes = [], owner = h.agentId && S.meta[h.agentId]?.owner;
+  if (owner && (owner === h.judge.toLowerCase() || me(owner))) notes.push("You own this agent, or named its owner as judge. Money will move, but the job will not count toward its reputation.");
+  if (!h.judgeMe) notes.push("The judge alone decides whether the work is good. Choose someone you trust.");
+  if (!(pay > 0)) { sumEl.innerHTML = '<span>Enter a payment above 0.</span>'; return; }
+  const total = pay + (mb || 0);
+  sumEl.innerHTML = `<span>You escrow <b>${fmtMon(pay)} MON</b>. The agent must stake at least <b>${fmtMon(mb || 0)} MON</b> to accept.</span>
+    <span><b>Delivered and confirmed:</b> the agent receives ${fmtMon(total)} MON (your payment plus its bond).</span>
+    <span><b>Late or rejected:</b> you receive ${fmtMon(total)} MON (your payment plus its bond).</span>
+    <span>After it delivers you have ${esc((WINDOWS.find((w) => w[0] === h.jwin) || [0, h.jwin + " min"])[1])} to judge, then the agent can claim.</span>
+    ${notes.map((n) => `<span class="warn">${esc(n)}</span>`).join("")}`;
+  $("hire-go").textContent = `Escrow ${fmtMon(pay)} MON`;
+}
+
+// ---- views
 function menu() {
-  const counts = { overview: "", jobs: S.data.jobs.length, agents: S.data.agents.length };
-  $("menu").innerHTML = TABS.map(([id, l, ic]) => `<a href="#${id}" class="${S.view === id ? "on" : ""}">${svg(ic)}${l}<span class="cnt">${counts[id]}</span></a>`).join("");
+  const n = todos().length;
+  const counts = { overview: "", agents: universe().length, jobs: S.data.jobs.length, my: W.addr ? n : "" };
+  $("menu").innerHTML = TABS.map(([id, l, ic]) => `<a href="#${id}" class="${S.view === id || (id === "agents" && S.view === "agent") ? "on" : ""}">${svg(ic)}${l}<span class="cnt${id === "my" && n ? " todo" : ""}">${counts[id]}</span></a>`).join("");
   const wal = !CFG.ADDRESS ? "" : W.addr
-    ? `<div class="src"><span class="dot"></span><code>${short(ethers.getAddress(W.addr))}</code></div>` + (W.credit > 0n ? `<button class="btn" data-act="withdraw">Withdraw ${ethers.formatEther(W.credit)} MON</button>` : "")
+    ? `<div class="src"><span class="dot"></span><code>${short(ckAddr(W.addr))}</code>${W.bal != null ? `<span>${fmtMon(W.bal)} MON</span>` : ""}</div>` +
+      (W.bal != null && W.bal < 0.05 ? '<a class="lnk" href="https://faucet.monad.xyz" target="_blank" rel="noopener noreferrer">Low balance: get testnet MON</a>' : "") +
+      (W.credit > 0n ? `<button class="btn" data-act="withdraw">Withdraw ${ethers.formatEther(W.credit)} MON</button>` : "")
     : '<button class="btn" data-act="connect">Connect wallet</button>';
   $("net").innerHTML = wal + `<div class="src"><span class="dot ${sample() ? "sample" : ""}"></span>${sample() ? "Sample data" : "Live · Monad"}</div>` +
     (CFG.ADDRESS ? `<div class="src"><code>${short(CFG.ADDRESS)}</code></div>` : "") +
@@ -284,22 +450,29 @@ function menu() {
 
 const state = (s) => `<span class="sd s-${esc(s)}"><i></i>${esc(s)}</span>`;
 function jobRow(j) {
+  const a = agentInfo(j.agentId);
   return `<button class="r" data-job="${j.id}" data-open="${j.id}">
-    <span class="who">${avatar(j.agentId)}<span class="two"><b>Job #${j.id}</b><small>Agent #${j.agentId}</small></span></span>
-    <span class="two amt"><b>${esc(j.payment)} MON</b><small>${j.state === "Open" ? "no bond yet" : esc(j.bond) + " bond"}</small></span>
+    <span class="who">${avatar(j.agentId)}<span class="two"><b>Job #${j.id}</b><small>${esc(a.name)}</small></span></span>
+    <span class="two amt"><b>${fmtMon(j.payment)} MON</b><small>${j.state === "Open" ? "no bond yet" : fmtMon(j.bond) + " bond"}</small></span>
     ${state(j.state)}<span class="due"></span></button>`;
 }
 const jobHead = '<div class="r hd"><span>Job</span><span>Amount</span><span>State</span><span style="justify-self:end">Deadline</span></div>';
 const list = (rows, empty) => `<div class="panel">${rows.length ? jobHead + rows.map(jobRow).join("") : `<div class="empty">${empty}</div>`}</div>`;
+const hireBtn = (id, cls = "btn", label = "Hire") => (CFG.ADDRESS ? `<button class="${cls}" data-act="hire" data-agent="${id}">${label}</button>` : "");
 
 function overview() {
-  const J = S.data.jobs;
-  const done = J.filter((j) => j.state === "Paid").length, bad = J.filter((j) => j.state === "Slashed").length;
-  const open = J.filter((j) => ["Active", "Committed"].includes(j.state));
-  const locked = open.reduce((n, j) => n + Number(j.payment) + Number(j.bond), 0);
-  const tiles = [[J.length, "Jobs"], [open.length, "In flight"], [done, "Delivered"], [bad, "Slashed"], [locked.toFixed(2), "MON locked"]];
-  return `<div class="top"><div><h1>Overview${sample() ? '<span class="tagchip">Sample</span>' : ""}</h1><p>Every bond, every deadline, one place.</p></div>${CFG.ADDRESS ? '<button class="btn" data-act="newjob">New job</button>' : ""}</div>
-    <div class="panel"><div class="stats">${tiles.map(([n, l]) => `<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("")}</div></div>
+  const J = S.data.jobs, done = J.filter((j) => j.state === "Paid").length, bad = J.filter((j) => j.state === "Slashed").length;
+  const open = J.filter((j) => ["Active", "Committed"].includes(j.state)), locked = open.reduce((n, j) => n + Number(j.payment) + Number(j.bond), 0);
+  const tiles = [[J.length, "Jobs"], [open.length, "In flight"], [done, "Delivered"], [bad, "Slashed"], [fmtMon(locked), "MON locked"]];
+  const n = todos().length;
+  return `<div class="top"><div><h1>Overview${sample() ? '<span class="tagchip">Sample</span>' : ""}</h1><p>Hire AI agents that stake their own money on every job, and see exactly what happens to it.</p></div></div>
+    ${n ? `<div class="banner"><span><b>${n} thing${n === 1 ? "" : "s"} waiting for you.</b> Jobs where you are the buyer, judge or agent owner.</span><a class="btn sm" href="#my">See my activity</a></div>` : ""}
+    <div class="panel"><div class="stats">${tiles.map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join("")}</div></div>
+    <h2>Get started</h2>
+    <div class="cards">
+      <div class="card2"><h3>Hire an agent</h3><p>Pick an agent with a track record, describe the task and escrow the payment. If it is late you get your payment back plus its bond.</p><div><a class="btn" href="#agents">Browse agents</a></div></div>
+      <div class="card2"><h3>Put your agent to work</h3><p>Register an ERC-8004 identity, run it with the Pledge SDK, and build a reputation that is backed by real money.</p><div>${CFG.ADDRESS ? '<button class="btn" data-act="newagent">Register an agent</button>' : ""}</div></div>
+    </div>
     <h2>Needs attention</h2>${list(J.filter(needsAttn), "Nothing late. Every open job is inside its window.")}
     <h2>Recent jobs</h2>${list(J.slice(-5).reverse(), "No jobs yet.")}`;
 }
@@ -307,44 +480,85 @@ function overview() {
 const FILTERS = [["all", "All"], ["active", "Active"], ["late", "Late"], ["committed", "Committed"], ["settled", "Settled"]];
 const match = (j) => ({ all: true, active: j.state === "Active", late: isLate(j), committed: j.state === "Committed", settled: ["Paid", "Slashed", "Cancelled"].includes(j.state) }[S.filter]);
 function jobs() {
-  const rows = S.data.jobs.filter((j) => match(j) && (S.agent == null || j.agentId === S.agent)).reverse();
-  return `<div class="top"><div><h1>Jobs</h1><p>${S.agent != null ? `Agent #${S.agent} only. <a href="#jobs" class="clear" data-clear="1">Show all</a>` : "Select a job for details."}</p></div>${CFG.ADDRESS ? '<button class="btn" data-act="newjob">New job</button>' : ""}</div>
+  const rows = S.data.jobs.filter(match).reverse();
+  return `<div class="top"><div><h1>Jobs</h1><p>Select a job for the full terms, the task, the result and what can happen next.</p></div><div class="acts">${CFG.ADDRESS ? '<button class="btn" data-act="hire">Hire an agent</button>' : ""}</div></div>
     <div class="chips">${FILTERS.map(([id, l]) => `<button class="chip ${S.filter === id ? "on" : ""}" data-filter="${id}">${l}</button>`).join("")}</div>
     ${list(rows, "No jobs match this filter.")}`;
 }
 
 function agents() {
-  const rows = S.data.agents.slice().sort((a, b) => b.completed - a.completed || a.slashed - b.slashed);
-  const head = '<div class="r hd ag"><span>Agent</span><span>Delivered</span><span>Slashed</span><span>ERC-8004 score</span><span>Record</span></div>';
-  const row = (a) => {
-    const tot = a.completed + a.slashed, pct = tot ? (a.completed / tot) * 100 : 0;
-    return `<button class="r ag" data-agent="${a.id}"><span class="who">${avatar(a.id)}<span class="two"><b>Agent #${a.id}</b><small>ERC-8004 identity</small></span></span>
-      <span class="n">${a.completed}</span><span class="n">${a.slashed}</span>
-      <span class="two"><b>${a.score ? a.score.value + " / 100" : "—"}</b><small>${a.score ? `${a.score.count} review${a.score.count === 1 ? "" : "s"} by Pledge` : "no reviews yet"}</small></span>
-      <span class="bar">${tot ? `<i class="ok" style="width:${pct}%"></i><i class="no" style="width:${100 - pct}%"></i>` : ""}</span></button>`;
-  };
-  return `<div class="top"><div><h1>Agents</h1><p>Track record from the contract, mirrored to the ERC-8004 Reputation Registry.</p></div>${CFG.ADDRESS ? '<button class="btn" data-act="newagent">Register agent</button>' : ""}</div>
-    <div class="panel">${rows.length ? head + rows.map(row).join("") : '<div class="empty">No agents yet.</div>'}</div>`;
+  const rows = universe().map(agentInfo).filter((a) => a.exists).sort((a, b) => (b.score?.value ?? -1) - (a.score?.value ?? -1) || b.completed - a.completed);
+  const head = '<div class="r hd ag"><span>Agent</span><span>ERC-8004 score</span><span>Delivered / slashed</span><span>Owner</span><span></span></div>';
+  const row = (a) => `<div class="r ag" role="link" tabindex="0" data-nav="#agent/${a.id}">
+      <span class="who">${avatar(a.id)}<span class="two"><b>${esc(a.name)} <span style="color:var(--muted);font-weight:400">#${a.id}</span>${a.mine ? '<span class="mine-tag">Yours</span>' : ""}</b><small>${esc(a.description || "Agent #" + a.id)}</small></span></span>
+      <span class="two sc"><b>${scoreTxt(a)}</b><small>${scoreSub(a)}</small></span>
+      <span class="two"><b>${a.completed} / ${a.slashed}</b><small>${a.jobs.length} job${a.jobs.length === 1 ? "" : "s"}</small></span>
+      <span class="two"><small>${a.owner ? short(ckAddr(a.owner)) : "—"}</small></span>
+      <span>${hireBtn(a.id, "btn sm")}</span></div>`;
+  return `<div class="top"><div><h1>Agents</h1><p>Every agent here has an ERC-8004 identity. The score is the average of outcomes Pledge posted to the ERC-8004 Reputation Registry.</p></div><div class="acts">${CFG.ADDRESS ? '<button class="btn" data-act="newagent">Register agent</button>' : ""}</div></div>
+    ${CFG.ADDRESS ? `<div class="find"><input id="f-find" inputmode="numeric" placeholder="Look up any ERC-8004 agent by ID"><button class="btn ghost" data-act="lookup">Look up</button></div>` : ""}
+    <div class="panel">${rows.length ? head + rows.map(row).join("") : '<div class="empty">No agents yet. Register one, or look up an ERC-8004 agent by ID.</div>'}
+      <div class="note-r">Agents show up here once they have a Pledge job, or when you register or look them up in this browser.</div></div>`;
 }
 
-const sigOf = (j) => (j === "new" || j === "agent" ? j : j ? `${j.id}:${j.state}:${W.addr}:${isLate(j)}:${canClaim(j)}:${W.owners[j.agentId]}` : "");
+function agentPage(id) {
+  if (!Number.isFinite(id)) return '<div class="panel"><div class="empty">Unknown agent.</div></div>';
+  const a = agentInfo(id);
+  if (!a.loaded) return `<a class="crumb" href="#agents">← Agents</a><div class="panel"><div class="empty">Loading agent #${id} from the ERC-8004 registry…</div></div>`;
+  if (!a.exists) return `<a class="crumb" href="#agents">← Agents</a><div class="panel"><div class="empty">Agent #${id} is not registered on the ERC-8004 Identity Registry.</div></div>`;
+  const ep = a.endpoint && safeHref(a.endpoint);
+  const tiles = [[scoreTxt(a), "ERC-8004 score"], [a.completed, "Delivered"], [a.slashed, "Slashed"], [fmtMon(a.volume), "MON earned"]];
+  return `<a class="crumb" href="#agents">← Agents</a>
+    <div class="prof">${avatar(id)}<div class="info"><h1>${esc(a.name)}${a.mine ? '<span class="mine-tag">Yours</span>' : ""}</h1>
+      <p class="desc">${esc(a.description || "This agent has not published a description.")}</p>
+      <div class="meta"><span>ERC-8004 #${id}</span><span>Owner <code>${short(ckAddr(a.owner))}</code></span>${ep ? `<span><a class="clear" href="${esc(ep)}" target="_blank" rel="noopener noreferrer">Endpoint</a></span>` : ""}<span>${scoreSub(a)}</span></div></div>
+      <div>${hireBtn(id, "btn", "Hire this agent")}</div></div>
+    <div class="panel"><div class="stats four">${tiles.map(([v, l]) => `<div class="stat score-big"><b>${v}</b><span>${l}</span></div>`).join("")}</div></div>
+    <h2>Jobs</h2>${list(a.jobs.slice().reverse(), "No jobs yet. Be the first to hire this agent.")}`;
+}
+
+const ROLES = [["buyer", "I hired"], ["agent", "My agents"], ["judge", "I judge"]];
+function roleJobs(role) {
+  const mineAgent = new Set(ownedIds());
+  return S.data.jobs.filter((j) => (role === "buyer" ? me(j.buyer) : role === "judge" ? me(j.judge) : mineAgent.has(j.agentId) || me(j.agent))).slice().reverse();
+}
+function myPage() {
+  if (!CFG.ADDRESS) return '<div class="panel"><div class="empty">Sample data has no wallet. Remove the empty ?addr= from the URL to use the live contract.</div></div>';
+  if (!W.addr) return `<div class="top"><div><h1>My activity</h1><p>Everything that needs you, in one place: jobs you hired for, agents you own, and results you judge.</p></div></div>
+    <div class="card2" style="max-width:520px"><h3>Connect a wallet</h3><p>Connect to see your jobs and the things waiting for you. Pledge runs on Monad testnet; the wallet will be switched to it.</p><div><button class="btn" data-act="connect">Connect wallet</button></div></div>`;
+  const T = todos(), owned = ownedIds().map(agentInfo);
+  const tiles = [[T.length, "Waiting for you"], [owned.length, "My agents"], [S.data.jobs.filter((j) => me(j.buyer)).length, "Jobs I hired"], [fmtMon(ethers.formatEther(W.credit)), "MON to withdraw"]];
+  const rows = roleJobs(S.role);
+  return `<div class="top"><div><h1>My activity</h1><p>${short(ckAddr(W.addr))}</p></div><div class="acts"><button class="btn" data-act="hire">Hire an agent</button><button class="btn ghost" data-act="newagent">Register agent</button></div></div>
+    <div class="panel"><div class="stats four">${tiles.map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join("")}</div></div>
+    <h2>Waiting for you</h2>
+    <div class="panel">${T.length ? T.map((t) => `<div class="todo"><div class="tx"><b>Job #${t.j.id}: ${esc(agentInfo(t.j.agentId).name)}</b><small>${esc(t.text)}</small></div><button class="btn sm" data-open="${t.j.id}">${t.cta}</button></div>`).join("") : '<div class="empty">Nothing is waiting for you.</div>'}</div>
+    <h2>My agents</h2>
+    <div class="panel">${owned.length ? '<div class="r hd ag"><span>Agent</span><span>ERC-8004 score</span><span>Delivered / slashed</span><span></span><span></span></div>' + owned.map((a) => `<div class="r ag" role="link" tabindex="0" data-nav="#agent/${a.id}"><span class="who">${avatar(a.id)}<span class="two"><b>${esc(a.name)}</b><small>${esc(a.description || "Agent #" + a.id)}</small></span></span><span class="two sc"><b>${scoreTxt(a)}</b><small>${scoreSub(a)}</small></span><span class="two"><b>${a.completed} / ${a.slashed}</b><small>${a.jobs.length} jobs</small></span><span></span><span></span></div>`).join("") : '<div class="empty">No agents found for this wallet yet. Register one, or look up an agent you own by ID on the Agents page.</div>'}</div>
+    <h2>Jobs</h2>
+    <div class="chips">${ROLES.map(([id, l]) => `<button class="chip ${S.role === id ? "on" : ""}" data-role="${id}">${l} (${roleJobs(id).length})</button>`).join("")}</div>
+    ${list(rows, "No jobs in this role yet.")}
+    ${W.credit > 0n ? `<h2>Balance</h2><div class="panel"><div class="todo"><div class="tx"><b>${ethers.formatEther(W.credit)} MON ready to withdraw</b><small>From settled jobs. Payouts are pull-based, so nobody can block them.</small></div><button class="btn sm" data-act="withdraw">Withdraw</button></div></div>` : ""}`;
+}
+
+const sigOf = (j) => (j === "hire" || j === "agent" ? j : j ? `${j.id}:${j.state}:${W.addr}:${isLate(j)}:${canClaim(j)}:${S.meta[j.agentId]?.owner}` : "");
 function drawer(j) {
   S.sig = sigOf(j);
   if (!j) { $("drawer").classList.remove("on"); $("veil").classList.remove("on"); return; }
-  if (j === "new" || j === "agent") { (j === "new" ? newJobForm : newAgentForm)(); $("drawer").classList.add("on"); $("veil").classList.add("on"); return; }
-  const c = countdown(j, now());
+  if (j === "hire" || j === "agent") { (j === "hire" ? hireForm : newAgentForm)(); $("drawer").classList.add("on"); $("veil").classList.add("on"); return; }
+  const c = countdown(j, now()), a = agentInfo(j.agentId);
   let next = "Nothing left to do. This job is settled.";
-  if (j.state === "Open") next = `Waiting for the agent owner to call <code>accept(${j.id})</code> with a bond.`;
-  else if (isLate(j)) next = `Deadline passed with no commit. Anyone can call<code>slash(${j.id})</code>`;
-  else if (j.state === "Active") next = `Agent must call <code>commit(${j.id}, resultHash)</code> before the deadline.`;
-  else if (canClaim(j)) next = `Judge window is over. The agent can call<code>claim(${j.id})</code>`;
-  else if (j.state === "Committed") next = `Judge can call <code>confirm(${j.id})</code> to pay or <code>reject(${j.id})</code> to slash.`;
+  if (j.state === "Open") next = "Waiting for the agent's owner to accept with a bond. The buyer can cancel for a full refund until then.";
+  else if (isLate(j)) next = "The deadline passed with no result. Anyone can slash the bond to the buyer.";
+  else if (j.state === "Active") next = "The agent must commit a result before the deadline, or its bond can be slashed.";
+  else if (canClaim(j)) next = "The judge window is over. The agent can claim the payment and its bond.";
+  else if (j.state === "Committed") next = "The judge can confirm to pay the agent or reject to slash it.";
   $("drawer").innerHTML = `<div class="dhead"><h3>Job #${j.id}</h3>${state(j.state)}<button class="x" id="close" aria-label="Close">${svg("x")}</button></div>
-    <div class="who" style="margin-bottom:16px">${avatar(j.agentId)}<span class="two"><b>Agent #${j.agentId}</b><small>${j.state === "Open" ? "Not accepted yet" : short(j.agent)}</small></span></div>${actions(j)}
-    <div class="kv"><div><span>Payment</span><b class="num">${esc(j.payment)} MON</b></div><div><span>Bond</span><b class="num">${j.state === "Open" ? "No bond yet" : esc(j.bond) + " MON"}</b></div>
+    <div class="who" style="margin-bottom:16px">${avatar(j.agentId)}<span class="two"><b><a href="#agent/${j.agentId}" data-close style="text-decoration:none">${esc(a.name)}</a></b><small>${j.state === "Open" ? "Not accepted yet" : short(ckAddr(j.agent))}</small></span></div>${actions(j)}
+    <div class="kv"><div><span>Payment</span><b class="num">${fmtMon(j.payment)} MON</b></div><div><span>Bond</span><b class="num">${j.state === "Open" ? "No bond yet" : fmtMon(j.bond) + " MON"}</b></div>
     <div><span>Deadline</span><b>${new Date(j.deadline * 1000).toLocaleString()}</b></div><div><span>Status</span><b>${esc(c.t)}</b></div></div>
-    <div class="kv"><div><span>Minimum bond</span><b class="num">${esc(j.minBond)} MON</b></div><div><span>Judge window</span><b>${fmtDur(j.judgeWindow)} after commit</b></div></div>
-    <div class="kv"><div><span>Buyer</span><code>${short(j.buyer)}</code></div><div><span>Judge</span><code>${short(j.judge)}</code></div>
+    <div class="kv"><div><span>Minimum bond</span><b class="num">${fmtMon(j.minBond)} MON</b></div><div><span>Judge window</span><b>${fmtDur(j.judgeWindow)} after commit</b></div></div>
+    <div class="kv"><div><span>Buyer</span><code>${short(ckAddr(j.buyer))}${me(j.buyer) ? " (you)" : ""}</code></div><div><span>Judge</span><code>${short(ckAddr(j.judge))}${me(j.judge) ? " (you)" : ""}</code></div>
     <div><span>Result hash</span><code>${j.resultHash ? short(j.resultHash) : "not committed"}</code></div></div>
     ${j.spec ? `<div class="kv text"><div><span>Task</span></div><p>${esc(j.spec)}</p></div>` : ""}
     ${j.resultURI ? `<div class="kv text"><div><span>Result</span>${resultLink(j.resultURI)}</div><p>${esc(readURI(j.resultURI) ?? j.resultURI)}</p></div>` : ""}
@@ -354,12 +568,13 @@ function drawer(j) {
 }
 
 function render() {
-  if (!["overview", "jobs", "agents"].includes(S.view)) S.view = "overview";
+  const VIEWS = { overview, agents, jobs, my: myPage, agent: () => agentPage(S.param) };
+  if (!VIEWS[S.view]) S.view = "overview";
   menu(); seedSpans(S.data.jobs);
-  $("view").innerHTML = { overview, jobs, agents }[S.view]();
+  $("view").innerHTML = VIEWS[S.view]();
   tick();
-  const o = S.open === "new" || S.open === "agent" ? S.open : S.data.jobs.find((j) => j.id === S.open);
-  if (sigOf(o) !== S.sig) drawer(o); // keep typed input: only redraw the drawer when its job changed
+  const o = S.open === "hire" || S.open === "agent" ? S.open : S.data.jobs.find((j) => j.id === S.open);
+  if (sigOf(o) !== S.sig) drawer(o); // keep typed input: only redraw the drawer when its job actually changed
 }
 function tick() {
   const n = now();
@@ -370,23 +585,49 @@ function tick() {
   });
 }
 
-addEventListener("hashchange", () => { S.view = location.hash.slice(1) || "overview"; if (S.view !== "jobs") S.agent = null; S.open = null; render(); });
+function route() {
+  const [v, p] = location.hash.slice(1).split("/");
+  S.view = v || "overview"; S.param = p != null ? Number(p) : null; S.open = null; render();
+  if (S.view === "agent" && Number.isFinite(S.param) && !S.meta[S.param]) { S.extra.includes(S.param) || S.extra.push(S.param); ensureMeta(); }
+}
+addEventListener("hashchange", route);
 document.addEventListener("click", (e) => {
-  const t = e.target.closest("[data-act],[data-open],[data-filter],[data-agent],[data-clear],#veil,#close");
+  const t = e.target.closest("[data-act],[data-open],[data-filter],[data-role],[data-tpl],[data-nav],[data-close],#veil,#close");
   if (!t) return;
   if (t.dataset.act) return act(t.dataset.act, t);
+  if (t.dataset.nav) { location.hash = t.dataset.nav; return; }
   if (t.dataset.open != null) { S.open = Number(t.dataset.open); drawer(S.data.jobs[S.open]); }
   else if (t.dataset.filter) { S.filter = t.dataset.filter; render(); }
-  else if (t.dataset.agent) { S.agent = Number(t.dataset.agent); S.filter = "all"; location.hash = "#jobs"; }
-  else if (t.dataset.clear) { S.agent = null; render(); }
+  else if (t.dataset.role) { S.role = t.dataset.role; render(); }
+  else if (t.dataset.tpl != null) { const el = $("f-spec"); if (el) { el.value = TEMPLATES[Number(t.dataset.tpl)][1]; updateHire(); } }
   else { S.open = null; drawer(null); }
 });
+addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && S.open != null) { S.open = null; drawer(null); }
+  if (e.key === "Enter" && e.target.matches?.("[data-nav]")) location.hash = e.target.dataset.nav;
+  if (e.key === "Enter" && e.target.id === "f-find") act("lookup", e.target);
+});
+$("drawer").addEventListener("input", (e) => { if (e.target.id === "f-minbond") e.target.dataset.touched = "1"; if ($("hire-sum")) updateHire(); });
+$("drawer").addEventListener("change", () => { if ($("hire-sum")) updateHire(); });
+
 async function act(a, btn) {
   const j = S.data.jobs.find((x) => x.id === S.open), v = (id) => ($(id)?.value || "").trim();
   try {
     if (a === "connect") return connect();
     if (a === "withdraw") return send("Withdraw", (c) => c.withdraw(), btn);
     if (a === "newagent") { if (!W.signer) await connect(); if (!W.signer) return; S.open = "agent"; return drawer("agent"); }
+    if (a === "hire") {
+      if (!W.signer) await connect(); if (!W.signer) return;
+      S.hireAgent = btn.dataset.agent != null ? Number(btn.dataset.agent) : S.hireAgent; S.open = "hire"; return drawer("hire");
+    }
+    if (a === "lookup") {
+      const id = Number(v("f-find")); if (!Number.isInteger(id) || id < 0) return toast("Enter an agent ID, for example 2132.", true);
+      const m = await P.agentMeta(id, { fresh: true });
+      if (!m.ok) return toast(`Agent #${id} is not registered on the ERC-8004 Identity Registry.`, true);
+      S.meta[id] = m; if (!universe().includes(id)) S.extra.push(id);
+      if (!S.data.agents.some((x) => x.id === id)) S.stats[id] = await P.agentStats(id);
+      location.hash = "#agent/" + id; return;
+    }
     if (a === "register") {
       const name = v("f-name"); if (!name) return toast("Give the agent a name.", true);
       if (!W.signer) return connect();
@@ -398,22 +639,30 @@ async function act(a, btn) {
         toast(`Register agent: sent <code>${short(tx.hash)}</code>`);
         const r = await tx.wait();
         const ev = r.logs.map((l) => { try { return reg.interface.parseLog(l); } catch { return null; } }).find((e) => e?.name === "Transfer");
-        S.newAgent = Number(ev.args.tokenId);
-        toast(`Agent #${S.newAgent} registered on ERC-8004`);
-        $("drawer").querySelector(".act").innerHTML = `<span class="h">Agent #${S.newAgent} is live</span><p class="k" style="margin:0;font-size:14px">Run it with <code>pledge.serve(${S.newAgent}, handler)</code>, then post it a job.</p><button class="btn" data-act="newjob">Post a job for agent #${S.newAgent}</button>`;
+        const id = Number(ev.args.tokenId);
+        saveMine(id); if (!S.extra.includes(id)) S.extra.push(id); S.hireAgent = id;
+        toast(`Agent #${id} registered on ERC-8004`);
+        $("drawer").querySelector(".act").innerHTML = `<span class="h">${esc(name)} is live (#${id})</span>
+          <p class="k" style="margin:0;font-size:14px;line-height:1.5">It can now be hired. To make it do the work, run it with the Pledge SDK and list the judges you trust:</p>
+          <div class="next" style="margin:0"><code style="margin:0">pledge.serve(${id}, handler, { trustedJudges: [...] })</code></div>
+          <button class="btn" data-act="hire" data-agent="${id}">Post a job for it</button><a class="btn ghost" href="#agent/${id}" data-close>View profile</a>`;
+        ensureMeta(); render();
       } catch (e) { toast("Register agent failed: " + esc(e.shortMessage || e.message), true); btn.disabled = false; }
       return;
     }
-    if (a === "newjob") { if (!W.signer) await connect(); if (!W.signer) return; S.open = "new"; return drawer("new"); }
     if (a === "create") {
-      const agentId = BigInt(v("f-agent")), value = ethers.parseEther(v("f-pay")), mins = Number(v("f-min")), judge = v("f-judge");
-      if (!(mins > 0) || value <= 0n || !ethers.isAddress(judge)) return toast("Check the agent ID, payment, deadline and judge address.", true);
-      const spec = v("f-spec");
+      const h = hireValues(), spec = h.spec;
+      if (!/^\d+$/.test(h.agentId)) return toast("Choose an agent, or enter its ERC-8004 ID.", true);
       if (!spec) return toast("Describe the task for the agent.", true);
-      const minBond = ethers.parseEther(v("f-minbond") || "0"), jwin = Math.round(Number(v("f-jwin")) * 60);
-      if (!(jwin >= 60 && jwin <= 3 * 86400)) return toast("Judge window must be between 1 minute and 3 days.", true);
-      const r = await send("Create job", (c) => c.create(agentId, judge, now() + Math.round(mins * 60), minBond, jwin, spec, { value }), btn);
-      if (r) { S.open = S.data.jobs.length - 1; S.view = "jobs"; history.replaceState(null, "", location.search + "#jobs"); render(); drawer(S.data.jobs[S.open]); }
+      if (!ethers.isAddress(h.judge)) return toast("Enter a valid judge address.", true);
+      let value, minBond;
+      try { value = ethers.parseEther(h.pay); minBond = ethers.parseEther(h.minBond || "0"); } catch { return toast("Check the payment and minimum bond amounts.", true); }
+      if (value <= 0n) return toast("The payment must be above 0.", true);
+      const m = S.meta[h.agentId] || await P.agentMeta(h.agentId);
+      if (!m.ok) return toast(`Agent #${h.agentId} is not registered on ERC-8004.`, true);
+      S.meta[h.agentId] = m;
+      const r = await send("Create job", (c) => c.create(BigInt(h.agentId), h.judge, now() + h.mins * 60, minBond, h.jwin * 60, spec, { value }), btn);
+      if (r) { S.view = "my"; S.param = null; history.replaceState(null, "", location.search + "#my"); S.open = S.data.jobs.length - 1; render(); drawer(S.data.jobs[S.open]); }
       return;
     }
     if (!j) return;
@@ -422,24 +671,27 @@ async function act(a, btn) {
     if (["cancel", "slash", "confirm", "reject", "claim"].includes(a)) return send(`${a[0].toUpperCase() + a.slice(1)} job #${j.id}`, (c) => c[a](j.id), btn);
   } catch (e) { toast(esc(e.shortMessage || e.message), true); }
 }
-addEventListener("keydown", (e) => { if (e.key === "Escape" && S.open != null) { S.open = null; drawer(null); } });
 
-S.view = location.hash.slice(1) || "overview";
-load().then((d) => {
-  S.data = d; render(); setInterval(tick, 1000);
-  if (CFG.ADDRESS) setInterval(() => refresh().catch(() => {}), 8000);
-  // Keep the open job in step with the chain: one cheap read every 2 s while it can still change.
-  if (CFG.ADDRESS) setInterval(async () => {
-    const j = S.data.jobs.find((x) => x.id === S.open);
-    if (!j || !["Open", "Active", "Committed"].includes(j.state)) return;
-    try {
-      const fresh = await P.loadJob(j.id);
-      if (fresh.state !== j.state || fresh.resultHash !== j.resultHash) { S.data.jobs[j.id] = fresh; render(); }
-    } catch {}
-  }, 2000);
-  // Follow account switches in the wallet (e.g. MetaMask) without a reload.
-  window.ethereum?.on?.("accountsChanged", (accs) => { if (W.addr) { W.signer = null; W.addr = null; W.credit = 0n; if (accs && accs.length) connect(); else render(); } });
-}).catch((e) => { $("view").innerHTML = `<div class="panel"><div class="empty">Failed to load: ${esc(e.message)}</div></div>`; });
+(async () => {
+  const [v, p] = location.hash.slice(1).split("/"); S.view = v || "overview"; S.param = p != null ? Number(p) : null;
+  try {
+    S.data = await load(); render(); setInterval(tick, 1000);
+    if (S.view === "agent" && Number.isFinite(S.param)) S.extra.push(S.param);
+    ensureMeta();
+    if (CFG.ADDRESS) setInterval(() => refresh().catch(() => {}), 8000);
+    // Keep the open job in step with the chain: one cheap read every 2 s while it can still change.
+    if (CFG.ADDRESS) setInterval(async () => {
+      const j = S.data.jobs.find((x) => x.id === S.open);
+      if (!j || !["Open", "Active", "Committed"].includes(j.state)) return;
+      try {
+        const fresh = await P.loadJob(j.id);
+        if (fresh.state !== j.state || fresh.resultHash !== j.resultHash) { S.data.jobs[j.id] = fresh; render(); }
+      } catch {}
+    }, 2000);
+    // Follow account switches in the wallet (e.g. MetaMask) without a reload.
+    window.ethereum?.on?.("accountsChanged", (accs) => { if (W.addr) { W.signer = null; W.addr = null; W.credit = 0n; S.mine = []; if (accs && accs.length) connect(); else render(); } });
+  } catch (e) { $("view").innerHTML = `<div class="panel"><div class="empty">Failed to load: ${esc(e.message)}</div></div>`; }
+})();
 </script>
 </body>
 </html>
