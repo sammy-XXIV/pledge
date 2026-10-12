@@ -96,6 +96,20 @@
     }
   }
   const provider = CFG.ADDRESS ? new PacedProvider(CFG.RPC, undefined, { batchMaxCount: 1 }) : null;
+  // One job, read fresh (used to keep an open job panel in step with the chain between full refreshes).
+  async function loadJob(id) {
+    const c = new ethers.Contract(CFG.ADDRESS, ABI, provider);
+    const j = await c.jobs(id);
+    const job = {
+      id, agentId: Number(j.agentId), payment: ethers.formatEther(j.payment), bond: ethers.formatEther(j.bond),
+      deadline: Number(j.deadline), state: STATES[Number(j.state)], buyer: j.buyer, judge: j.judge, agent: j.agent,
+      resultHash: /^0x0+$/.test(j.resultHash) ? "" : j.resultHash,
+    };
+    if (job.resultHash && !(id in resultCache)) resultCache[id] = await c.resultURIs(id).catch(() => "");
+    job.spec = specCache[id] || ""; job.resultURI = resultCache[id] || "";
+    return job;
+  }
+
   async function load() {
     if (!CFG.ADDRESS) return sample();
     const c = new ethers.Contract(CFG.ADDRESS, ABI, provider);
@@ -155,5 +169,5 @@
   }
   document.head.insertAdjacentHTML("beforeend", `<link rel="icon" href="data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#000"/><path d="M11 14v-3a5 5 0 0 1 10 0v3" stroke="#2B59FF" stroke-width="2.5" fill="none" stroke-linecap="round"/><rect x="8" y="14" width="16" height="11" rx="3" fill="#2B59FF"/></svg>')}">`);
 
-  window.P = { CFG, STATES, JUDGE_WINDOW, $, esc, reduce, short, link, avatar, svg, stateIcon, load, provider, countdown, ring, seedSpans, countUp, reveal };
+  window.P = { CFG, STATES, JUDGE_WINDOW, $, esc, reduce, short, link, avatar, svg, stateIcon, load, loadJob, provider, countdown, ring, seedSpans, countUp, reveal };
 })();
